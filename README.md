@@ -8,6 +8,7 @@
 
 ## TODO
 - data preprocessing
+- configure Object Detection Pipeline
 - run a simple model on the data
 - run a better model
 - automatise installation
