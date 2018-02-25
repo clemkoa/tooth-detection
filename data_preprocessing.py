@@ -46,7 +46,7 @@ def save_cropped_images(data,
                         dataset_directory,
                         label_map_dict,
                         image_subdirectory = 'JPEGImages',
-                        output_directory = 'output',
+                        output_directory = 'test',
                         category = FLAGS.category):
   create_directory_if_not_exists(output_directory)
   create_directory_if_not_exists(os.path.join(output_directory, category))
@@ -65,7 +65,7 @@ def save_cropped_images(data,
     ymax = float(obj['bndbox']['ymax'])
     path = os.path.join(output_directory, category, str(data['filename']) + '-' + str(i) + '.png')
     print(path)
-    image.crop((xmin, ymin, xmax, ymax)).save(path)
+    image.crop((xmin, ymin, xmax, ymax)).resize((50, 100)).convert('LA').save(path)
 
 def dict_to_tf_example(data,
                        dataset_directory,
