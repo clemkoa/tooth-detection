@@ -12,6 +12,11 @@ from scipy import ndimage
 image_width = 50
 image_height = 100
 pixel_depth = 255.0  # Number of levels per pixel.
+num_channels = 1 # grayscale
+batch_size = 4
+patch_size = 5
+depth = 16
+num_hidden = 64
 
 def load_tooth(folder):
   """Load the data for a single letter label."""
@@ -62,9 +67,17 @@ def maybe_pickle(data_folders, force=False):
         print('Unable to save data to', set_filename, ':', e)
   return dataset_names
 
-def merge_datasets(datasets, l):
-    results = np.concatenate(tuple(datasets))
-    labels = np.concatenate(tuple(l))
+def merge_datasets(datasets):
+    train_d = []
+    train_l = []
+    for index, foldername in enumerate(datasets):
+        dataset = pickle.load(open(foldername, "rb"))
+        train_d.append(dataset)
+        train_l.append(np.array([index for a in dataset]))
+        print(len(dataset), np.mean(dataset), np.std(dataset))
+
+    results = np.concatenate(tuple(train_d))
+    labels = np.concatenate(tuple(train_l))
     return results, labels
 
 train_folders = ['train/6max', 'train/6mand']
@@ -72,72 +85,76 @@ test_folders = ['test/6max', 'test/6mand']
 train_datasets = maybe_pickle(train_folders)
 test_datasets = maybe_pickle(test_folders)
 
-datasets = []
-l = []
-for index, foldername in enumerate(train_datasets):
-    dataset = pickle.load(open(foldername, "rb"))
-    datasets.append(dataset)
-    l.append(np.array([index for a in dataset]))
-    print(l)
-    print(len(dataset), np.mean(dataset), np.std(dataset))
-    print(dataset.shape)
+train_features, train_labels = merge_datasets(train_datasets)
+test_features, test_labels = merge_datasets(test_datasets)
+num_labels = len(train_labels)
 
-results, labels = merge_datasets(datasets, l)
-print(results, labels)
+graph = tf.Graph()
 
-# image_size = 28
-# num_labels = 2
-# num_channels = 1 # grayscale
-# batch_size = 16
-# patch_size = 5
-# depth = 16
-# num_hidden = 64
-#
-# graph = tf.Graph()
-#
-# with graph.as_default():
-#
-#   # Input data.
-#   tf_train_dataset = tf.placeholder(
-#     tf.float32, shape=(batch_size, image_size, image_size, num_channels))
-#   tf_train_labels = tf.placeholder(tf.float32, shape=(batch_size, num_labels))
-#   tf_valid_dataset = tf.constant(valid_dataset)
-#   tf_test_dataset = tf.constant(test_dataset)
-#
-#   # Variables.
-#   layer1_weights = tf.Variable(tf.truncated_normal(
-#       [patch_size, patch_size, num_channels, depth], stddev=0.1))
-#   layer1_biases = tf.Variable(tf.zeros([depth]))
-#   layer2_weights = tf.Variable(tf.truncated_normal(
-#       [patch_size, patch_size, depth, depth], stddev=0.1))
-#   layer2_biases = tf.Variable(tf.constant(1.0, shape=[depth]))
-#   layer3_weights = tf.Variable(tf.truncated_normal(
-#       [image_size // 4 * image_size // 4 * depth, num_hidden], stddev=0.1))
-#   layer3_biases = tf.Variable(tf.constant(1.0, shape=[num_hidden]))
-#   layer4_weights = tf.Variable(tf.truncated_normal(
-#       [num_hidden, num_labels], stddev=0.1))
-#   layer4_biases = tf.Variable(tf.constant(1.0, shape=[num_labels]))
-#
-#   # Model.
-#   def model(data):
-#     conv = tf.nn.conv2d(data, layer1_weights, [1, 2, 2, 1], padding='SAME')
-#     hidden = tf.nn.relu(conv + layer1_biases)
-#     conv = tf.nn.conv2d(hidden, layer2_weights, [1, 2, 2, 1], padding='SAME')
-#     hidden = tf.nn.relu(conv + layer2_biases)
-#     shape = hidden.get_shape().as_list()
-#     reshape = tf.reshape(hidden, [shape[0], shape[1] * shape[2] * shape[3]])
-#     hidden = tf.nn.relu(tf.matmul(reshape, layer3_weights) + layer3_biases)
-#     return tf.matmul(hidden, layer4_weights) + layer4_biases
-#
-#   # Training computation.
-#   logits = model(tf_train_dataset)
-#   loss = tf.reduce_mean(
-#     tf.nn.softmax_cross_entropy_with_logits(labels=tf_train_labels, logits=logits))
-#
-#   # Optimizer.
-#   optimizer = tf.train.GradientDescentOptimizer(0.05).minimize(loss)
-#
-#   # Predictions for the training, validation, and test data.
-#   train_prediction = tf.nn.softmax(logits)
-#   valid_prediction = tf.nn.softmax(model(tf_valid_dataset))
-#   test_prediction = tf.nn.softmax(model(tf_test_dataset))
+with graph.as_default():
+      # Input data.
+    tf_train_dataset = tf.placeholder(
+        tf.float32, shape=(batch_size, image_height, image_width, num_channels))
+    tf_train_labels = tf.placeholder(tf.float32, shape=(batch_size, num_labels))
+    tf_test_dataset = tf.constant(test_features)
+
+    # Variables.
+    layer1_weights = tf.Variable(tf.truncated_normal(
+        [patch_size, patch_size, num_channels, depth], stddev=0.1))
+    layer1_biases = tf.Variable(tf.zeros([depth]))
+    layer2_weights = tf.Variable(tf.truncated_normal(
+        [patch_size, patch_size, depth, depth], stddev=0.1))
+    layer2_biases = tf.Variable(tf.constant(1.0, shape=[depth]))
+    layer3_weights = tf.Variable(tf.truncated_normal(
+        [image_width // 4 * image_height // 4 * depth, num_hidden], stddev=0.1))
+    layer3_biases = tf.Variable(tf.constant(1.0, shape=[num_hidden]))
+    layer4_weights = tf.Variable(tf.truncated_normal(
+        [num_hidden, num_labels], stddev=0.1))
+    layer4_biases = tf.Variable(tf.constant(1.0, shape=[num_labels]))
+
+    # Model.
+    def model(data):
+        conv = tf.nn.conv2d(data, layer1_weights, [1, 2, 2, 1], padding='SAME')
+        hidden = tf.nn.relu(conv + layer1_biases)
+        conv = tf.nn.conv2d(hidden, layer2_weights, [1, 2, 2, 1], padding='SAME')
+        hidden = tf.nn.relu(conv + layer2_biases)
+        shape = hidden.get_shape().as_list()
+        reshape = tf.reshape(hidden, [shape[0], shape[1] * shape[2] * shape[3]])
+        hidden = tf.nn.relu(tf.matmul(reshape, layer3_weights) + layer3_biases)
+        return tf.matmul(hidden, layer4_weights) + layer4_biases
+
+    # Training computation.
+    logits = model(tf_train_dataset)
+    loss = tf.reduce_mean(
+    tf.nn.softmax_cross_entropy_with_logits(labels=tf_train_labels, logits=logits))
+
+    # Optimizer.
+    optimizer = tf.train.GradientDescentOptimizer(0.05).minimize(loss)
+
+    # Predictions for the training, validation, and test data.
+    train_prediction = tf.nn.softmax(logits)
+    # valid_prediction = tf.nn.softmax(model(tf_valid_dataset))
+    # test_prediction = tf.nn.softmax(model(tf_test_dataset))
+
+
+num_steps = 1001
+
+with tf.Session(graph=graph) as session:
+    tf.global_variables_initializer().run()
+    dataset = tf.data.Dataset.from_tensor_slices((train_features, train_labels))
+    dataset = dataset.shuffle(buffer_size=10000)
+    dataset = dataset.batch(batch_size)
+    dataset = dataset.repeat()
+    iterator = dataset.make_one_shot_iterator()
+    next_element = iterator.get_next()
+    print('Initialized')
+    for step in range(num_steps):
+        batch_data = next_element[0]
+        batch_labels = next_element[1]
+        feed_dict = {tf_train_dataset : batch_data, tf_train_labels : batch_labels}
+        _, l, predictions = session.run(
+            [optimizer, loss, train_prediction], feed_dict=feed_dict)
+        if (step % 10 == 0):
+            print('Minibatch loss at step %d: %f' % (step, l))
+            print('Minibatch accuracy: %.1f%%' % accuracy(predictions, batch_labels))
+    print('Test accuracy: %.1f%%' % accuracy(test_prediction.eval(), test_labels))
