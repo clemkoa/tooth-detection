@@ -86,7 +86,7 @@ def merge_datasets(datasets):
     return results, labels
 
 train_folders = ['train/6max', 'train/6mand']
-test_folders = ['test/6max', 'test/6mand']
+test_folders = ['val/6max', 'val/6mand']
 train_datasets = maybe_pickle(train_folders)
 test_datasets = maybe_pickle(test_folders)
 
