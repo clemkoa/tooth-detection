@@ -14,9 +14,11 @@ image_height = 100
 pixel_depth = 255.0  # Number of levels per pixel.
 num_channels = 1 # grayscale
 batch_size = 10
+batch_repeat = 20
 patch_size = 5
 depth = 16
 num_hidden = 64
+dropout = 0.75
 
 def load_tooth(folder):
   """Load the data for a single letter label."""
@@ -101,7 +103,7 @@ with graph.as_default():
     dataset = tf.data.Dataset.from_tensor_slices((train_features, train_labels))
     dataset = dataset.shuffle(buffer_size=1000)
     dataset = dataset.batch(batch_size)
-    dataset = dataset.repeat(20)
+    dataset = dataset.repeat(batch_repeat)
     iterator = dataset.make_one_shot_iterator()
     next_element, next_label = iterator.get_next()
 
@@ -123,13 +125,16 @@ with graph.as_default():
 
     # Model.
     def model(data):
-        conv = tf.nn.conv2d(data, layer1_weights, [1, 2, 2, 1], padding='SAME')
-        hidden = tf.nn.relu(conv + layer1_biases)
-        conv = tf.nn.conv2d(hidden, layer2_weights, [1, 2, 2, 1], padding='SAME')
-        hidden = tf.nn.relu(conv + layer2_biases)
+        conv = tf.nn.conv2d(data, layer1_weights, [1, 1, 1, 1], padding='SAME')
+        pool = tf.nn.max_pool(conv, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
+        hidden = tf.nn.relu(pool + layer1_biases)
+        conv = tf.nn.conv2d(hidden, layer2_weights, [1, 1, 1, 1], padding='SAME')
+        pool = tf.nn.max_pool(conv, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
+        hidden = tf.nn.relu(pool + layer2_biases)
         shape = hidden.get_shape().as_list()
         reshape = tf.reshape(hidden, [-1, shape[1] * shape[2] * shape[3]])
         hidden = tf.nn.relu(tf.matmul(reshape, layer3_weights) + layer3_biases)
+        hidden = tf.nn.dropout(hidden, dropout)
         return tf.matmul(hidden, layer4_weights) + layer4_biases
 
     # Training computation.
