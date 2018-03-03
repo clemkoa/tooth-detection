@@ -13,7 +13,7 @@ image_width = 50
 image_height = 100
 pixel_depth = 255.0  # Number of levels per pixel.
 num_channels = 1 # grayscale
-batch_size = 4
+batch_size = 10
 patch_size = 5
 depth = 16
 num_hidden = 64
@@ -66,9 +66,11 @@ def maybe_pickle(data_folders, force=False):
       except Exception as e:
         print('Unable to save data to', set_filename, ':', e)
   return dataset_names
+
 def accuracy(predictions, labels):
     return (100.0 * np.sum(np.argmax(predictions, 1) == np.argmax(labels, 1))
             / predictions.shape[0])
+
 def merge_datasets(datasets):
     train_d = []
     train_l = []

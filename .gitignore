@@ -2,3 +2,6 @@ noor_dataset
 object_detection
 *.record
 output
+data/
+train/
+val/

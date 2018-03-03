@@ -46,24 +46,27 @@ def save_cropped_images(data,
                         dataset_directory,
                         label_map_dict,
                         image_subdirectory = 'JPEGImages',
-                        output_directory = 'test',
-                        category = FLAGS.category):
+                        output_directory = FLAGS.set,
+                        category = FLAGS.category,
+                        dataset_name = 'custom'):
+
+  output_dir_dict = {16: '6max', 26: '6max', 36: '6mand', 46: '6mand'}
   create_directory_if_not_exists(output_directory)
-  create_directory_if_not_exists(os.path.join(output_directory, category))
-  data_dir = os.path.join('noor_dataset', 'Annoted', category)
-  img_path = os.path.join(data_dir, image_subdirectory, data['filename'])
-  full_path = os.path.join(dataset_directory, img_path + '.png')
+  create_directory_if_not_exists(os.path.join(output_directory, output_dir_dict[category]))
+  full_path = os.path.join(dataset_directory, image_subdirectory, data['filename'] + '.png')
   with tf.gfile.GFile(full_path, 'rb') as fid:
     encoded_jpg = fid.read()
   encoded_jpg_io = io.BytesIO(encoded_jpg)
   image = PIL.Image.open(encoded_jpg_io)
 
   for i, obj in enumerate(data['object']):
+    if int(obj['name']) != category:
+        continue
     xmin = float(obj['bndbox']['xmin'])
     ymin = float(obj['bndbox']['ymin'])
     xmax = float(obj['bndbox']['xmax'])
     ymax = float(obj['bndbox']['ymax'])
-    path = os.path.join(output_directory, category, str(data['filename']) + '-' + str(i) + '.png')
+    path = os.path.join(output_directory, output_dir_dict[category], dataset_name + str(data['filename']) + '-' + str(i) + '.png')
     print(path)
     image.crop((xmin, ymin, xmax, ymax)).resize((50, 100)).convert('LA').save(path)
 
@@ -145,30 +148,38 @@ def dict_to_tf_example(data,
 
 def main(_):
   writer = tf.python_io.TFRecordWriter(FLAGS.output_path)
+  datasets = ['custom', 'google-image', 'noor']
+  categories = [16, 26, 36, 46]
+  output_dir_dict = {16: '6max', 26: '6max', 36: '6mand', 46: '6mand'}
+  for dataset in datasets:
+      data_dir = os.path.join('data', dataset)
+      for category in categories:
+          examples_path = os.path.join(data_dir, 'ImageSets', 'Main', str(category) + '_' + FLAGS.set + '.txt')
+          label_map_dict = label_map_util.get_label_map_dict(os.path.join(data_dir, 'pascal_label_map.pbtxt'))
+          print('label_map_dict', label_map_dict)
+          annotations_dir = os.path.join(data_dir, FLAGS.annotations_dir)
+          examples_list = dataset_util.read_examples_list(examples_path)
+          examples_list = [x for x in examples_list if x]
+          print(examples_list)
 
-  data_dir = os.path.join('noor_dataset', 'Annoted', FLAGS.category)
-  examples_path = os.path.join(data_dir, 'ImageSets', 'Main', FLAGS.category + '_' + FLAGS.set + '.txt')
-  label_map_dict = label_map_util.get_label_map_dict(FLAGS.label_map_path)
-  annotations_dir = os.path.join(data_dir, FLAGS.annotations_dir)
-  examples_list = dataset_util.read_examples_list(examples_path)
-  examples_list = [x for x in examples_list if x]
-  print(examples_list)
+          for idx, example in enumerate(examples_list):
+            if idx % 100 == 0:
+              logging.info('On image %d of %d', idx, len(examples_list))
+            path = os.path.join(annotations_dir, example + '.xml')
+            with tf.gfile.GFile(path, 'r') as fid:
+              xml_str = fid.read()
+            xml = etree.fromstring(xml_str)
+            data = dataset_util.recursive_parse_xml_to_dict(xml)['annotation']
+            if 'object' not in data.keys():
+                print('No label, ignoring ', path)
+                continue
+            save_cropped_images(data, data_dir, label_map_dict, category=category, dataset_name = dataset)
 
-  for idx, example in enumerate(examples_list):
-    if idx % 100 == 0:
-      logging.info('On image %d of %d', idx, len(examples_list))
-    path = os.path.join(annotations_dir, example + '.xml')
-    with tf.gfile.GFile(path, 'r') as fid:
-      xml_str = fid.read()
-    xml = etree.fromstring(xml_str)
-    data = dataset_util.recursive_parse_xml_to_dict(xml)['annotation']
-    if 'object' not in data.keys():
-        print('No label, ignoring ', path)
-        continue
-    save_cropped_images(data, FLAGS.data_dir, label_map_dict, category=FLAGS.category)
-  #   tf_example = dict_to_tf_example(data, FLAGS.data_dir, label_map_dict)
-  #   writer.write(tf_example.SerializeToString())
-  # writer.close()
+
+
+      #   tf_example = dict_to_tf_example(data, FLAGS.data_dir, label_map_dict)
+      #   writer.write(tf_example.SerializeToString())
+      # writer.close()
 
 
 if __name__ == '__main__':
