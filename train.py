@@ -99,6 +99,7 @@ with graph.as_default():
     dataset = tf.data.Dataset.from_tensor_slices((train_features, train_labels))
     dataset = dataset.shuffle(buffer_size=1000)
     dataset = dataset.batch(batch_size)
+    dataset = dataset.repeat(20)
     iterator = dataset.make_one_shot_iterator()
     next_element, next_label = iterator.get_next()
 
@@ -140,19 +141,22 @@ with graph.as_default():
     # Predictions for the training, validation, and test data.
     train_prediction = tf.nn.softmax(logits)
     # valid_prediction = tf.nn.softmax(model(tf_valid_dataset))
-    # test_prediction = tf.nn.softmax(model(tf_test_dataset))
+    test_prediction = tf.nn.softmax(model(tf_test_dataset))
 
 
-    num_steps = 1001
-
+    num_steps = 10001
     step = 0
     with tf.train.MonitoredTrainingSession() as sess:
         while not sess.should_stop():
-            _, l, predictions = sess.run([optimizer, loss, train_prediction])
-            if (step % 10 == 0):
+            if (step % 100 == 0):
+                _, l, predictions, n_l, t_predictions = sess.run([optimizer, loss, train_prediction, next_label, test_prediction])
                 print('Minibatch loss at step %d: %f' % (step, l))
-                print((predictions, next_label))
-                # print('Minibatch accuracy: %.1f%%' % accuracy(predictions, next_label))
+                # print((predictions, next_label))
+                print('Minibatch accuracy: %.1f%%' % accuracy(predictions, n_l))
+                print('Validation accuracy: %.1f%%' % accuracy(
+                        t_predictions, test_labels))
+            else:
+                _, l, predictions = sess.run([optimizer, loss, train_prediction])
             step += 1
             if step > num_steps:
                 break
