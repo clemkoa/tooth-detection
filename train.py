@@ -66,17 +66,20 @@ def maybe_pickle(data_folders, force=False):
       except Exception as e:
         print('Unable to save data to', set_filename, ':', e)
   return dataset_names
-
+def accuracy(predictions, labels):
+    return (100.0 * np.sum(np.argmax(predictions, 1) == np.argmax(labels, 1))
+            / predictions.shape[0])
 def merge_datasets(datasets):
     train_d = []
     train_l = []
     for index, foldername in enumerate(datasets):
         dataset = pickle.load(open(foldername, "rb"))
         train_d.append(dataset)
-        train_l.append(np.array([index for a in dataset]))
+        train_l.append(np.array([np.eye(2)[index] for a in dataset]))
         print(len(dataset), np.mean(dataset), np.std(dataset))
-
-    results = np.concatenate(tuple(train_d))
+    # print('train_l', train_l)
+    results = np.expand_dims(np.concatenate(tuple(train_d)), axis=3)
+    # print('shape', results.shape)
     labels = np.concatenate(tuple(train_l))
     return results, labels
 
@@ -86,16 +89,19 @@ train_datasets = maybe_pickle(train_folders)
 test_datasets = maybe_pickle(test_folders)
 
 train_features, train_labels = merge_datasets(train_datasets)
+
 test_features, test_labels = merge_datasets(test_datasets)
-num_labels = len(train_labels)
+num_labels = 2
 
 graph = tf.Graph()
-
 with graph.as_default():
-      # Input data.
-    tf_train_dataset = tf.placeholder(
-        tf.float32, shape=(batch_size, image_height, image_width, num_channels))
-    tf_train_labels = tf.placeholder(tf.float32, shape=(batch_size, num_labels))
+    # Input data.
+    dataset = tf.data.Dataset.from_tensor_slices((train_features, train_labels))
+    dataset = dataset.shuffle(buffer_size=1000)
+    dataset = dataset.batch(batch_size)
+    iterator = dataset.make_one_shot_iterator()
+    next_element, next_label = iterator.get_next()
+
     tf_test_dataset = tf.constant(test_features)
 
     # Variables.
@@ -106,7 +112,7 @@ with graph.as_default():
         [patch_size, patch_size, depth, depth], stddev=0.1))
     layer2_biases = tf.Variable(tf.constant(1.0, shape=[depth]))
     layer3_weights = tf.Variable(tf.truncated_normal(
-        [image_width // 4 * image_height // 4 * depth, num_hidden], stddev=0.1))
+        [image_width // 4 * image_height // 4 * depth + 400, num_hidden], stddev=0.1))
     layer3_biases = tf.Variable(tf.constant(1.0, shape=[num_hidden]))
     layer4_weights = tf.Variable(tf.truncated_normal(
         [num_hidden, num_labels], stddev=0.1))
@@ -119,14 +125,14 @@ with graph.as_default():
         conv = tf.nn.conv2d(hidden, layer2_weights, [1, 2, 2, 1], padding='SAME')
         hidden = tf.nn.relu(conv + layer2_biases)
         shape = hidden.get_shape().as_list()
-        reshape = tf.reshape(hidden, [shape[0], shape[1] * shape[2] * shape[3]])
+        reshape = tf.reshape(hidden, [-1, shape[1] * shape[2] * shape[3]])
         hidden = tf.nn.relu(tf.matmul(reshape, layer3_weights) + layer3_biases)
         return tf.matmul(hidden, layer4_weights) + layer4_biases
 
     # Training computation.
-    logits = model(tf_train_dataset)
+    logits = model(next_element)
     loss = tf.reduce_mean(
-    tf.nn.softmax_cross_entropy_with_logits(labels=tf_train_labels, logits=logits))
+        tf.nn.softmax_cross_entropy_with_logits(labels=next_label, logits=logits))
 
     # Optimizer.
     optimizer = tf.train.GradientDescentOptimizer(0.05).minimize(loss)
@@ -137,24 +143,16 @@ with graph.as_default():
     # test_prediction = tf.nn.softmax(model(tf_test_dataset))
 
 
-num_steps = 1001
+    num_steps = 1001
 
-with tf.Session(graph=graph) as session:
-    tf.global_variables_initializer().run()
-    dataset = tf.data.Dataset.from_tensor_slices((train_features, train_labels))
-    dataset = dataset.shuffle(buffer_size=10000)
-    dataset = dataset.batch(batch_size)
-    dataset = dataset.repeat()
-    iterator = dataset.make_one_shot_iterator()
-    next_element = iterator.get_next()
-    print('Initialized')
-    for step in range(num_steps):
-        batch_data = next_element[0]
-        batch_labels = next_element[1]
-        feed_dict = {tf_train_dataset : batch_data, tf_train_labels : batch_labels}
-        _, l, predictions = session.run(
-            [optimizer, loss, train_prediction], feed_dict=feed_dict)
-        if (step % 10 == 0):
-            print('Minibatch loss at step %d: %f' % (step, l))
-            print('Minibatch accuracy: %.1f%%' % accuracy(predictions, batch_labels))
-    print('Test accuracy: %.1f%%' % accuracy(test_prediction.eval(), test_labels))
+    step = 0
+    with tf.train.MonitoredTrainingSession() as sess:
+        while not sess.should_stop():
+            _, l, predictions = sess.run([optimizer, loss, train_prediction])
+            if (step % 10 == 0):
+                print('Minibatch loss at step %d: %f' % (step, l))
+                print((predictions, next_label))
+                # print('Minibatch accuracy: %.1f%%' % accuracy(predictions, next_label))
+            step += 1
+            if step > num_steps:
+                break
