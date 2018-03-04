@@ -25,11 +25,11 @@ def load_tooth(folder):
   image_files = os.listdir(folder)
   dataset = np.ndarray(shape=(len(image_files), image_height, image_width),
                          dtype=np.float32)
-  print(folder)
   num_images = 0
+  test_size = 0.1
   for image in image_files:
     image_file = os.path.join(folder, image)
-    print('image', image_file)
+    # print('image', image_file)
     try:
       image_data = (np.array(PIL.Image.open(image_file).convert('L')) -
                     pixel_depth / 2) / pixel_depth
@@ -45,26 +45,31 @@ def load_tooth(folder):
       print('Could not read:', image_file, ':', e, '- it\'s ok, skipping.')
 
   dataset = dataset[0:num_images, :, :]
+  np.random.shuffle(dataset)
+
 
   print('Full dataset tensor:', dataset.shape)
   print('Mean:', np.mean(dataset))
   print('Standard deviation:', np.std(dataset))
-  return dataset
+  return dataset[0:int(num_images * (1 - test_size)), :, :], dataset[int(num_images * (1 - test_size)):num_images, :, :]
 
 def maybe_pickle(data_folders, force=False):
   dataset_names = []
   for folder in data_folders:
-    set_filename = folder + '.pickle'
+    set_filename = folder
     dataset_names.append(set_filename)
     if os.path.exists(set_filename) and not force:
       # You may override by setting force=True.
       print('%s already present - Skipping pickling.' % set_filename)
     else:
       print('Pickling %s.' % set_filename)
-      dataset = load_tooth(folder)
+      train_dataset, test_dataset = load_tooth(folder)
       try:
-        with open(set_filename, 'wb') as f:
-          pickle.dump(dataset, f, pickle.HIGHEST_PROTOCOL)
+        print('train' + set_filename)
+        with open( folder + 'train.pickle', 'wb') as f:
+          pickle.dump(train_dataset, f, pickle.HIGHEST_PROTOCOL)
+        with open( folder + 'test.pickle', 'wb') as f:
+          pickle.dump(test_dataset, f, pickle.HIGHEST_PROTOCOL)
       except Exception as e:
         print('Unable to save data to', set_filename, ':', e)
   return dataset_names
@@ -76,26 +81,29 @@ def accuracy(predictions, labels):
 def merge_datasets(datasets):
     train_d = []
     train_l = []
+    test_d = []
+    test_l = []
     for index, foldername in enumerate(datasets):
-        dataset = pickle.load(open(foldername, "rb"))
+        dataset = pickle.load(open(foldername + 'train.pickle', "rb"))
         train_d.append(dataset)
-        train_l.append(np.array([np.eye(2)[index] for a in dataset]))
+        train_l.append(np.array([np.eye(len(datasets))[index] for a in dataset]))
         print(len(dataset), np.mean(dataset), np.std(dataset))
-    # print('train_l', train_l)
-    results = np.expand_dims(np.concatenate(tuple(train_d)), axis=3)
-    # print('shape', results.shape)
-    labels = np.concatenate(tuple(train_l))
-    return results, labels
+        dataset = pickle.load(open(foldername + 'test.pickle', "rb"))
+        test_d.append(dataset)
+        test_l.append(np.array([np.eye(len(datasets))[index] for a in dataset]))
+        print(len(dataset), np.mean(dataset), np.std(dataset))
+    train_d = np.expand_dims(np.concatenate(tuple(train_d)), axis=3)
+    train_l = np.concatenate(tuple(train_l))
+    test_d = np.expand_dims(np.concatenate(tuple(test_d)), axis=3)
+    test_l = np.concatenate(tuple(test_l))
+    return train_d, train_l, test_d, test_l
 
-train_folders = ['train/6max', 'train/6mand']
-test_folders = ['val/6max', 'val/6mand']
-train_datasets = maybe_pickle(train_folders)
-test_datasets = maybe_pickle(test_folders)
+train_folders = ['train/16', 'train/17', 'train/26', 'train/27', 'train/36', 'train/37', 'train/46', 'train/47']
+dataset_names = maybe_pickle(train_folders)
 
-train_features, train_labels = merge_datasets(train_datasets)
+train_features, train_labels, test_features, test_labels = merge_datasets(dataset_names)
 
-test_features, test_labels = merge_datasets(test_datasets)
-num_labels = 2
+num_labels = len(train_folders)
 
 graph = tf.Graph()
 with graph.as_default():

@@ -50,9 +50,10 @@ def save_cropped_images(data,
                         category = FLAGS.category,
                         dataset_name = 'custom'):
 
-  output_dir_dict = {16: '6max', 26: '6max', 36: '6mand', 46: '6mand'}
+  # output_dir_dict = {16: '6max', 26: '6max', 36: '6mand', 46: '6mand'}
+  output_directory = 'train'
   create_directory_if_not_exists(output_directory)
-  create_directory_if_not_exists(os.path.join(output_directory, output_dir_dict[category]))
+  create_directory_if_not_exists(os.path.join(output_directory, str(category)))
   full_path = os.path.join(dataset_directory, image_subdirectory, data['filename'] + '.png')
   with tf.gfile.GFile(full_path, 'rb') as fid:
     encoded_jpg = fid.read()
@@ -66,7 +67,7 @@ def save_cropped_images(data,
     ymin = float(obj['bndbox']['ymin'])
     xmax = float(obj['bndbox']['xmax'])
     ymax = float(obj['bndbox']['ymax'])
-    path = os.path.join(output_directory, output_dir_dict[category], dataset_name + str(data['filename']) + '-' + str(i) + '.png')
+    path = os.path.join(output_directory, str(category), dataset_name + str(data['filename']) + '-' + str(i) + '.png')
     print(path)
     image.crop((xmin, ymin, xmax, ymax)).resize((50, 100)).convert('LA').save(path)
 
@@ -149,8 +150,10 @@ def dict_to_tf_example(data,
 def main(_):
   writer = tf.python_io.TFRecordWriter(FLAGS.output_path)
   datasets = ['custom', 'google-image', 'noor']
-  categories = [16, 26, 36, 46]
-  output_dir_dict = {16: '6max', 26: '6max', 36: '6mand', 46: '6mand'}
+  categories = [11, 12, 13, 14, 15, 16, 17, 18,
+                21, 22, 23, 24, 25, 26, 27, 28,
+                31, 32, 33, 34, 35, 36, 37, 38,
+                41, 42, 43, 44, 45, 46, 47, 48]
   for dataset in datasets:
       data_dir = os.path.join('data', dataset)
       for category in categories:
