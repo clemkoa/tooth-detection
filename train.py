@@ -149,7 +149,7 @@ with graph.as_default():
     logits = model(next_element)
     loss = tf.reduce_mean(
         tf.nn.softmax_cross_entropy_with_logits(labels=next_label, logits=logits))
-
+    tf.summary.scalar('loss', loss)
     # Optimizer.
     optimizer = tf.train.GradientDescentOptimizer(0.05).minimize(loss)
 
@@ -158,20 +158,24 @@ with graph.as_default():
     # valid_prediction = tf.nn.softmax(model(tf_valid_dataset))
     test_prediction = tf.nn.softmax(model(tf_test_dataset))
 
+    merged = tf.summary.merge_all()
+    train_writer = tf.summary.FileWriter('/tmp/train/')
 
     num_steps = 10001
     step = 0
     with tf.train.MonitoredTrainingSession() as sess:
         while not sess.should_stop():
             if (step % 100 == 0):
-                _, l, predictions, n_l, t_predictions = sess.run([optimizer, loss, train_prediction, next_label, test_prediction])
+                _, l, predictions, n_l, t_predictions, summary = sess.run([optimizer, loss, train_prediction, next_label, test_prediction, merged])
                 print('Minibatch loss at step %d: %f' % (step, l))
                 # print((predictions, next_label))
                 print('Minibatch accuracy: %.1f%%' % accuracy(predictions, n_l))
                 print('Validation accuracy: %.1f%%' % accuracy(
                         t_predictions, test_labels))
             else:
-                _, l, predictions = sess.run([optimizer, loss, train_prediction])
+                _, l, predictions, summary = sess.run([optimizer, loss, train_prediction, merged])
             step += 1
+            train_writer.add_summary(summary, step)
+
             if step > num_steps:
                 break
