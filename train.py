@@ -13,10 +13,10 @@ image_width = 50
 image_height = 100
 pixel_depth = 255.0  # Number of levels per pixel.
 num_channels = 1 # grayscale
-batch_size = 10
-batch_repeat = 20
+batch_size = 16
+batch_repeat = 32
 patch_size = 5
-depth = 16
+depth = 20
 num_hidden = 64
 dropout = 0.8
 num_steps = 10001
@@ -95,6 +95,31 @@ def merge_datasets(datasets):
     test_l = np.concatenate(tuple(test_l))
     return train_d, train_l, test_d, test_l
 
+def inception2d(x, in_channels, filter_count):
+    print(x)
+    # bias dimension = 3*filter_count and then the extra in_channels for the avg pooling
+    bias = tf.Variable(tf.truncated_normal([3 * filter_count + in_channels], stddev=0.1))
+
+    # 1x1
+    one_filter = tf.Variable(tf.truncated_normal([1, 1, in_channels, filter_count], stddev=0.1))
+    one_by_one = tf.nn.conv2d(x, one_filter, strides=[1, 1, 1, 1], padding='SAME')
+
+    # 3x3
+    three_filter = tf.Variable(tf.truncated_normal([3, 3, in_channels, filter_count], stddev=0.1))
+    three_by_three = tf.nn.conv2d(x, three_filter, strides=[1, 1, 1, 1], padding='SAME')
+
+    # 5x5
+    five_filter = tf.Variable(tf.truncated_normal([5, 5, in_channels, filter_count], stddev=0.1))
+    five_by_five = tf.nn.conv2d(x, five_filter, strides=[1, 1, 1, 1], padding='SAME')
+
+    # avg pooling
+    pooling = tf.nn.avg_pool(x, ksize=[1, 3, 3, 1], strides=[1, 1, 1, 1], padding='SAME')
+
+    x = tf.concat([one_by_one, three_by_three, five_by_five, pooling], axis=3)  # Concat in the 4th dim to stack
+    x = tf.nn.bias_add(x, bias)
+    print(x)
+    return tf.nn.relu(x)
+
 train_folders = ['train/16', 'train/17', 'train/26', 'train/27', 'train/36', 'train/37', 'train/46', 'train/47']
 dataset_names = maybe_pickle(train_folders)
 
@@ -106,7 +131,7 @@ graph = tf.Graph()
 with graph.as_default():
     # Input data.
     dataset = tf.data.Dataset.from_tensor_slices((train_features, train_labels))
-    dataset = dataset.shuffle(buffer_size=1000)
+    dataset = dataset.shuffle(buffer_size=10000)
     dataset = dataset.batch(batch_size)
     dataset = dataset.repeat(batch_repeat)
     iterator = dataset.make_one_shot_iterator()
@@ -119,10 +144,10 @@ with graph.as_default():
         [patch_size, patch_size, num_channels, depth], stddev=0.1))
     layer1_biases = tf.Variable(tf.zeros([depth]))
     layer2_weights = tf.Variable(tf.truncated_normal(
-        [patch_size, patch_size, depth, depth], stddev=0.1))
-    layer2_biases = tf.Variable(tf.constant(1.0, shape=[depth]))
+        [patch_size, patch_size, 61, 61], stddev=0.1))
+    layer2_biases = tf.Variable(tf.constant(1.0, shape=[61]))
     layer3_weights = tf.Variable(tf.truncated_normal(
-        [image_height // 4 * (image_width + 2) // 4 * depth, num_hidden], stddev=0.1))
+        [image_height // 4 * (image_width + 2) // 4 * 61, num_hidden], stddev=0.1))
     layer3_biases = tf.Variable(tf.constant(1.0, shape=[num_hidden]))
     layer4_weights = tf.Variable(tf.truncated_normal(
         [num_hidden, num_labels], stddev=0.1))
@@ -130,9 +155,9 @@ with graph.as_default():
 
     # Model.
     def model(data):
-        conv1 = tf.nn.conv2d(data, layer1_weights, [1, 1, 1, 1], padding='SAME')
-        hidden1 = tf.nn.relu(conv1 + layer1_biases)
-        pool1 = tf.nn.max_pool(hidden1, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
+        conv1 = inception2d(data, 1, depth) # tf.nn.conv2d(data, layer1_weights, [1, 1, 1, 1], padding='SAME')
+        # hidden1 = tf.nn.relu(conv1 + layer1_biases)
+        pool1 = tf.nn.max_pool(conv1, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
 
         conv2 = tf.nn.conv2d(pool1, layer2_weights, [1, 1, 1, 1], padding='SAME')
         hidden2 = tf.nn.relu(conv2 + layer2_biases)
@@ -151,8 +176,7 @@ with graph.as_default():
 
     global_step = tf.Variable(0, trainable=False)
     starter_learning_rate = 0.01
-    learning_rate = tf.train.exponential_decay(starter_learning_rate, global_step,
-                                                num_steps, 0.9)
+    learning_rate = tf.train.exponential_decay(starter_learning_rate, global_step, num_steps, 0.9)
     optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss, global_step=global_step)
 
     train_prediction = tf.nn.softmax(logits)
