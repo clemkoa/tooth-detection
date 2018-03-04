@@ -18,7 +18,8 @@ batch_repeat = 20
 patch_size = 5
 depth = 16
 num_hidden = 64
-dropout = 0.75
+dropout = 0.8
+num_steps = 10001
 
 def load_tooth(folder):
   """Load the data for a single letter label."""
@@ -33,10 +34,6 @@ def load_tooth(folder):
     try:
       image_data = (np.array(PIL.Image.open(image_file).convert('L')) -
                     pixel_depth / 2) / pixel_depth
-      # arr = numpy.array(img)
-      # image_data = (imageio.imread(image_file).astype(float) -
-      #               pixel_depth / 2) / pixel_depth
-      # print(image_data)
       if image_data.shape != (image_height, image_width):
         raise Exception('Unexpected image shape: %s' % str(image_data.shape))
       dataset[num_images, :, :] = image_data
@@ -125,7 +122,7 @@ with graph.as_default():
         [patch_size, patch_size, depth, depth], stddev=0.1))
     layer2_biases = tf.Variable(tf.constant(1.0, shape=[depth]))
     layer3_weights = tf.Variable(tf.truncated_normal(
-        [image_width // 4 * image_height // 4 * depth + 400, num_hidden], stddev=0.1))
+        [image_height // 4 * (image_width + 2) // 4 * depth, num_hidden], stddev=0.1))
     layer3_biases = tf.Variable(tf.constant(1.0, shape=[num_hidden]))
     layer4_weights = tf.Variable(tf.truncated_normal(
         [num_hidden, num_labels], stddev=0.1))
@@ -133,35 +130,37 @@ with graph.as_default():
 
     # Model.
     def model(data):
-        conv = tf.nn.conv2d(data, layer1_weights, [1, 1, 1, 1], padding='SAME')
-        pool = tf.nn.max_pool(conv, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
-        hidden = tf.nn.relu(pool + layer1_biases)
-        conv = tf.nn.conv2d(hidden, layer2_weights, [1, 1, 1, 1], padding='SAME')
-        pool = tf.nn.max_pool(conv, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
-        hidden = tf.nn.relu(pool + layer2_biases)
-        shape = hidden.get_shape().as_list()
-        reshape = tf.reshape(hidden, [-1, shape[1] * shape[2] * shape[3]])
+        conv1 = tf.nn.conv2d(data, layer1_weights, [1, 1, 1, 1], padding='SAME')
+        hidden1 = tf.nn.relu(conv1 + layer1_biases)
+        pool1 = tf.nn.max_pool(hidden1, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
+
+        conv2 = tf.nn.conv2d(pool1, layer2_weights, [1, 1, 1, 1], padding='SAME')
+        hidden2 = tf.nn.relu(conv2 + layer2_biases)
+        pool2 = tf.nn.max_pool(hidden2, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
+
+        shape = pool2.get_shape().as_list()
+        reshape = tf.reshape(pool2, [-1, shape[1] * shape[2] * shape[3]])
         hidden = tf.nn.relu(tf.matmul(reshape, layer3_weights) + layer3_biases)
         hidden = tf.nn.dropout(hidden, dropout)
         return tf.matmul(hidden, layer4_weights) + layer4_biases
 
-    # Training computation.
     logits = model(next_element)
     loss = tf.reduce_mean(
         tf.nn.softmax_cross_entropy_with_logits(labels=next_label, logits=logits))
     tf.summary.scalar('loss', loss)
-    # Optimizer.
-    optimizer = tf.train.GradientDescentOptimizer(0.05).minimize(loss)
 
-    # Predictions for the training, validation, and test data.
+    global_step = tf.Variable(0, trainable=False)
+    starter_learning_rate = 0.01
+    learning_rate = tf.train.exponential_decay(starter_learning_rate, global_step,
+                                                num_steps, 0.9)
+    optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss, global_step=global_step)
+
     train_prediction = tf.nn.softmax(logits)
-    # valid_prediction = tf.nn.softmax(model(tf_valid_dataset))
     test_prediction = tf.nn.softmax(model(tf_test_dataset))
 
     merged = tf.summary.merge_all()
     train_writer = tf.summary.FileWriter('/tmp/train/')
 
-    num_steps = 10001
     step = 0
     with tf.train.MonitoredTrainingSession() as sess:
         while not sess.should_stop():
