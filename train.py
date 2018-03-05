@@ -120,7 +120,10 @@ def inception2d(x, in_channels, filter_count):
     print(x)
     return tf.nn.relu(x)
 
-train_folders = ['train/11', 'train/12', 'train/13', 'train/14', 'train/15', 'train/16', 'train/17']
+train_folders = [
+                    'train/11', 'train/12', 'train/13', 'train/14', 'train/15', 'train/16', 'train/17', 'train/18',
+                    'train/41', 'train/42', 'train/43', 'train/44', 'train/45', 'train/46', 'train/47', 'train/48',
+                ]
 #, 'train/27', 'train/36', 'train/37', 'train/46', 'train/47']
 dataset_names = maybe_pickle(train_folders)
 
@@ -183,7 +186,7 @@ with graph.as_default():
     tf.summary.scalar('loss', loss)
 
     global_step = tf.Variable(0, trainable=False)
-    starter_learning_rate = 0.001
+    starter_learning_rate = 0.01
     learning_rate = tf.train.exponential_decay(starter_learning_rate, global_step, num_steps, 0.9)
     optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss, global_step=global_step)
 
