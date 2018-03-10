@@ -192,6 +192,8 @@ with graph.as_default():
 
     train_prediction = tf.nn.softmax(logits)
     test_prediction = tf.nn.softmax(model(tf_test_dataset))
+    print(test_prediction)
+    confusion = tf.contrib.metrics.confusion_matrix(tf.argmax(test_prediction, 1), np.argmax(test_labels, 1))
 
     merged = tf.summary.merge_all()
     train_writer = tf.summary.FileWriter('/tmp/train/')
@@ -200,12 +202,13 @@ with graph.as_default():
     with tf.train.MonitoredTrainingSession() as sess:
         while not sess.should_stop():
             if (step % 100 == 0):
-                _, l, predictions, n_l, t_predictions, summary = sess.run([optimizer, loss, train_prediction, next_label, test_prediction, merged])
+                _, l, predictions, n_l, t_predictions, summary, c = sess.run([optimizer, loss, train_prediction, next_label, test_prediction, merged, confusion])
                 print('Minibatch loss at step %d: %f' % (step, l))
                 # print((predictions, next_label))
                 print('Minibatch accuracy: %.1f%%' % accuracy(predictions, n_l))
                 print('Validation accuracy: %.1f%%' % accuracy(
                         t_predictions, test_labels))
+                print('Validation confusion_matrix:', c)
             else:
                 _, l, predictions, summary = sess.run([optimizer, loss, train_prediction, merged])
             step += 1
