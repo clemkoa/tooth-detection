@@ -5,17 +5,18 @@ import io
 import PIL
 import pickle
 import imageio
+import math
 import numpy as np
 from PIL import Image
 from scipy import ndimage
 
-image_width = 50
-image_height = 100
+image_width = 100
+image_height = 200
 pixel_depth = 255.0  # Number of levels per pixel.
 num_channels = 1 # grayscale
 batch_size = 10
 batch_repeat = 32
-patch_size = 10
+patch_size = 5
 depth = 16
 num_hidden = 64
 dropout = 0.8
@@ -75,6 +76,10 @@ def accuracy(predictions, labels):
     return (100.0 * np.sum(np.argmax(predictions, 1) == np.argmax(labels, 1))
             / predictions.shape[0])
 
+def confusion_matrix(predictions, labels):
+    print(predictions, labels)
+    return tf.contrib.metrics.confusion_matrix(np.argmax(predictions, 1), np.argmax(labels, 1))
+
 def merge_datasets(datasets):
     train_d = []
     train_l = []
@@ -120,11 +125,16 @@ def inception2d(x, in_channels, filter_count):
     print(x)
     return tf.nn.relu(x)
 
-train_folders = [
-                    'train/11', 'train/12', 'train/13', 'train/14', 'train/15', 'train/16', 'train/17', 'train/18',
-                    'train/41', 'train/42', 'train/43', 'train/44', 'train/45', 'train/46', 'train/47', 'train/48',
-                ]
+# train_folders = [
+#                     'train/11', 'train/12', 'train/13', 'train/14', 'train/15', 'train/16', 'train/17', 'train/18',
+#                     'train/41', 'train/42', 'train/43', 'train/44', 'train/45', 'train/46', 'train/47', 'train/48',
+#                 ]
 #, 'train/27', 'train/36', 'train/37', 'train/46', 'train/47']
+
+train_folders = [
+                    'train/11', 'train/12', 'train/13', 'train/14'
+                ]
+
 dataset_names = maybe_pickle(train_folders)
 
 train_features, train_labels, test_features, test_labels = merge_datasets(dataset_names)
@@ -154,12 +164,14 @@ with graph.as_default():
         [patch_size, patch_size, 2 * depth, 4 * depth], stddev=0.1))
     layer3_biases = tf.Variable(tf.constant(1.0, shape=[4 * depth]))
     layer4_weights = tf.Variable(tf.truncated_normal(
-        [(image_height + 4) // 8 * (image_width + 6) // 8 * 4 * depth, num_hidden], stddev=0.1))
+        [int(math.ceil(image_height / 8.0) * math.ceil(image_width / 8.0) * 4 * depth), num_hidden], stddev=0.1))
     layer4_biases = tf.Variable(tf.constant(1.0, shape=[num_hidden]))
     layer5_weights = tf.Variable(tf.truncated_normal(
         [num_hidden, num_labels], stddev=0.1))
     layer5_biases = tf.Variable(tf.constant(1.0, shape=[num_labels]))
     # Model.
+
+    # print((image_height) // 8 , (image_width + 4) // 8 , 4 * depth, (image_height) // 8 * (image_width+ 4) // 8 * 4 * depth)
     def model(data):
         print(data)
         # conv1 = inception2d(data, 1, depth)
@@ -183,7 +195,7 @@ with graph.as_default():
 
     logits = model(next_element)
     loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=next_label, logits=logits))
-    tf.summary.scalar('loss', loss)
+    loss_summary = tf.summary.scalar('loss', loss)
 
     global_step = tf.Variable(0, trainable=False)
     starter_learning_rate = 0.01
@@ -192,17 +204,19 @@ with graph.as_default():
 
     train_prediction = tf.nn.softmax(logits)
     test_prediction = tf.nn.softmax(model(tf_test_dataset))
-    print(test_prediction)
-    confusion = tf.contrib.metrics.confusion_matrix(tf.argmax(test_prediction, 1), np.argmax(test_labels, 1))
 
-    merged = tf.summary.merge_all()
+    confusion = tf.contrib.metrics.confusion_matrix(tf.argmax(test_prediction, 1), np.argmax(test_labels, 1))
+    # confusion_summary = tf.summary.image('confusion', tf.reshape( confusion, [1, num_labels, num_labels, 1]))
+
+    merged = tf.summary.merge([loss_summary])
+    merged_all = tf.summary.merge_all()
     train_writer = tf.summary.FileWriter('/tmp/train/')
 
     step = 0
     with tf.train.MonitoredTrainingSession() as sess:
         while not sess.should_stop():
             if (step % 100 == 0):
-                _, l, predictions, n_l, t_predictions, summary, c = sess.run([optimizer, loss, train_prediction, next_label, test_prediction, merged, confusion])
+                _, l, predictions, n_l, t_predictions, summary, c = sess.run([optimizer, loss, train_prediction, next_label, test_prediction, merged_all, confusion])
                 print('Minibatch loss at step %d: %f' % (step, l))
                 # print((predictions, next_label))
                 print('Minibatch accuracy: %.1f%%' % accuracy(predictions, n_l))
@@ -211,8 +225,8 @@ with graph.as_default():
                 print('Validation confusion_matrix:', c)
             else:
                 _, l, predictions, summary = sess.run([optimizer, loss, train_prediction, merged])
-            step += 1
             train_writer.add_summary(summary, step)
+            step += 1
 
             if step > num_steps:
                 break

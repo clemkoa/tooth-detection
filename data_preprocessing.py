@@ -67,7 +67,7 @@ def save_cropped_images(data,
     ymax = float(obj['bndbox']['ymax'])
     path = os.path.join(output_directory, str(obj['name']), dataset_name + str(data['filename']) + '-' + str(i) + '.png')
     print(path)
-    image.crop((xmin, ymin, xmax, ymax)).save(path)
+    image.crop((xmin, ymin, xmax, ymax)).resize((100, 200)).convert('LA').save(path)
 
 def dict_to_tf_example(data,
                        dataset_directory,
