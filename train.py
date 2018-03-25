@@ -17,10 +17,11 @@ num_channels = 1 # grayscale
 batch_size = 10
 batch_repeat = 32
 patch_size = 5
-depth = 16
-num_hidden = 64
+depth = 32
+last_depth = 24
+num_hidden = 128
 dropout = 0.8
-num_steps = 10001
+num_steps = 20001
 
 def load_tooth(folder):
   """Load the data for a single letter label."""
@@ -125,15 +126,15 @@ def inception2d(x, in_channels, filter_count):
     print(x)
     return tf.nn.relu(x)
 
-# train_folders = [
-#                     'train/11', 'train/12', 'train/13', 'train/14', 'train/15', 'train/16', 'train/17', 'train/18',
-#                     'train/41', 'train/42', 'train/43', 'train/44', 'train/45', 'train/46', 'train/47', 'train/48',
-#                 ]
+train_folders = [
+                    'train/11', 'train/12', 'train/13', 'train/14', 'train/15', 'train/16', 'train/17', 'train/18',
+                    'train/41', 'train/42', 'train/43', 'train/44', 'train/45', 'train/46', 'train/47', 'train/48',
+                ]
 #, 'train/27', 'train/36', 'train/37', 'train/46', 'train/47']
 
-train_folders = [
-                    'train/11', 'train/12', 'train/13', 'train/14'
-                ]
+# train_folders = [
+#                     'train/11', 'train/12', 'train/13', 'train/14'
+#                 ]
 
 dataset_names = maybe_pickle(train_folders)
 
@@ -155,20 +156,23 @@ with graph.as_default():
 
     # Variables.
     layer1_weights = tf.Variable(tf.truncated_normal(
-        [patch_size, patch_size, num_channels, depth], stddev=0.1))
+        [5, 5, num_channels, depth], stddev=0.1))
     layer1_biases = tf.Variable(tf.zeros([depth]))
     layer2_weights = tf.Variable(tf.truncated_normal(
-        [patch_size, patch_size, depth, 2 * depth], stddev=0.1))
+        [3, 3, depth, 2 * depth], stddev=0.1))
     layer2_biases = tf.Variable(tf.constant(1.0, shape=[2 * depth]))
     layer3_weights = tf.Variable(tf.truncated_normal(
-        [patch_size, patch_size, 2 * depth, 4 * depth], stddev=0.1))
-    layer3_biases = tf.Variable(tf.constant(1.0, shape=[4 * depth]))
+        [3, 3, 2 * depth, 2 * depth], stddev=0.1))
+    layer3_biases = tf.Variable(tf.constant(1.0, shape=[2 * depth]))
     layer4_weights = tf.Variable(tf.truncated_normal(
-        [int(math.ceil(image_height / 8.0) * math.ceil(image_width / 8.0) * 4 * depth), num_hidden], stddev=0.1))
-    layer4_biases = tf.Variable(tf.constant(1.0, shape=[num_hidden]))
-    layer5_weights = tf.Variable(tf.truncated_normal(
+        [3, 3, 2 * depth, last_depth], stddev=0.1))
+    layer4_biases = tf.Variable(tf.constant(1.0, shape=[last_depth]))
+    full_weights = tf.Variable(tf.truncated_normal(
+        [int(math.ceil(image_height / 16.0) * math.ceil(image_width / 16.0) * last_depth), num_hidden], stddev=0.1))
+    full_biases = tf.Variable(tf.constant(1.0, shape=[num_hidden]))
+    logits_weights = tf.Variable(tf.truncated_normal(
         [num_hidden, num_labels], stddev=0.1))
-    layer5_biases = tf.Variable(tf.constant(1.0, shape=[num_labels]))
+    logits_biases = tf.Variable(tf.constant(1.0, shape=[num_labels]))
     # Model.
 
     # print((image_height) // 8 , (image_width + 4) // 8 , 4 * depth, (image_height) // 8 * (image_width+ 4) // 8 * 4 * depth)
@@ -186,12 +190,16 @@ with graph.as_default():
         conv3 = tf.nn.conv2d(pool2, layer3_weights, [1, 1, 1, 1], padding='SAME')
         hidden3 = tf.nn.relu(conv3 + layer3_biases)
         pool3 = tf.nn.max_pool(hidden3, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
-        shape = pool3.get_shape().as_list()
 
-        reshape = tf.reshape(pool3, [-1, shape[1] * shape[2] * shape[3]])
-        hidden = tf.nn.relu(tf.matmul(reshape, layer4_weights) + layer4_biases)
+        conv4 = tf.nn.conv2d(pool3, layer4_weights, [1, 1, 1, 1], padding='SAME')
+        hidden4 = tf.nn.relu(conv4 + layer4_biases)
+        pool4 = tf.nn.max_pool(hidden4, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
+        shape = pool4.get_shape().as_list()
+
+        reshape = tf.reshape(pool4, [-1, shape[1] * shape[2] * shape[3]])
+        hidden = tf.nn.relu(tf.matmul(reshape, full_weights) + full_biases)
         hidden = tf.nn.dropout(hidden, dropout)
-        return tf.matmul(hidden, layer5_weights) + layer5_biases
+        return tf.matmul(hidden, logits_weights) + logits_biases
 
     logits = model(next_element)
     loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=next_label, logits=logits))
@@ -222,7 +230,8 @@ with graph.as_default():
                 print('Minibatch accuracy: %.1f%%' % accuracy(predictions, n_l))
                 print('Validation accuracy: %.1f%%' % accuracy(
                         t_predictions, test_labels))
-                print('Validation confusion_matrix:', c)
+                print('Validation confusion_matrix:')
+                print(c)
             else:
                 _, l, predictions, summary = sess.run([optimizer, loss, train_prediction, merged])
             train_writer.add_summary(summary, step)
