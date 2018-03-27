@@ -11,6 +11,7 @@ import logging
 import io
 from lxml import etree
 import PIL.Image
+from PIL import Image
 
 from object_detection.utils import label_map_util
 from object_detection.utils import dataset_util
@@ -59,6 +60,8 @@ def save_cropped_images(data,
   image = PIL.Image.open(encoded_jpg_io)
 
   for i, obj in enumerate(data['object']):
+    if obj['name'] in ['Implant', 'implant', 'endo', 'Endo', 'restauration', 'Restauration', 'racine', 'Racine']:
+        continue
     if int(obj['name']) not in categories:
         continue
     xmin = float(obj['bndbox']['xmin'])
@@ -67,7 +70,10 @@ def save_cropped_images(data,
     ymax = float(obj['bndbox']['ymax'])
     path = os.path.join(output_directory, str(obj['name']), dataset_name + str(data['filename']) + '-' + str(i) + '.png')
     print(path)
-    image.crop((xmin, ymin, xmax, ymax)).resize((100, 200)).convert('LA').save(path)
+    image.crop((xmin, ymin, xmax, ymax)).resize((100, 200)).convert('L').save(path)
+    flipped_path = os.path.join(output_directory, str(get_opposite_category(int(obj['name']))), dataset_name + str(data['filename']) + '-' + str(i) + 'flipped.png')
+    print('flipping to :', flipped_path)
+    image.crop((xmin, ymin, xmax, ymax)).resize((100, 200)).transpose(Image.FLIP_LEFT_RIGHT).convert('L').save(flipped_path)
 
 def dict_to_tf_example(data,
                        dataset_directory,
@@ -145,8 +151,15 @@ def dict_to_tf_example(data,
   }))
   return example
 
+def get_opposite_category(i):
+    if (i - 10 % 20) // 10 in [1,3]:
+        return i - 10
+    else:
+        return i + 10
+
 def generate_cropped_images():
-    datasets = ['custom', 'google-image', 'noor']
+    datasets = ['rothschild', 'gonesse', 'google-image', 'noor']
+    # datasets = ['google-image', 'noor']
     categories = [11, 12, 13, 14, 15, 16, 17, 18,
                 21, 22, 23, 24, 25, 26, 27, 28,
                 31, 32, 33, 34, 35, 36, 37, 38,
