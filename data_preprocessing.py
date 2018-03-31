@@ -27,14 +27,11 @@ Example usage:
 
 flags = tf.app.flags
 flags.DEFINE_string('data_dir', '', 'Root directory to raw PASCAL VOC dataset.')
-flags.DEFINE_string('category', '6mand', 'Root directory to raw PASCAL VOC dataset.')
 flags.DEFINE_string('set', 'train', 'Convert training set, validation set or '
                     'merged set.')
 flags.DEFINE_string('annotations_dir', 'Annotations',
                     '(Relative) path to annotations directory.')
-flags.DEFINE_string('output_path', 'noor.record', 'Path to output TFRecord')
-flags.DEFINE_string('label_map_path', 'noor_dataset/Annoted/' + flags.FLAGS.category + '/pascal_label_map.pbtxt',
-                    'Path to label map proto')
+flags.DEFINE_string('output_path', 'train.record', 'Path to output TFRecord')
 SETS = ['train', 'val', 'trainval', 'test']
 FLAGS = flags.FLAGS
 
@@ -100,10 +97,8 @@ def dict_to_tf_example(data,
   Raises:
     ValueError: if the image pointed to by data['filename'] is not a valid JPEG
   """
-  data_dir = os.path.join('noor_dataset', 'Annoted', '6mand')
-  img_path = os.path.join(data_dir, image_subdirectory, data['filename'])
-  full_path = os.path.join(dataset_directory, img_path + '.png')
-  print('full_path', full_path)
+  full_path = os.path.join(dataset_directory, image_subdirectory, data['filename'] + '.png')
+  # print('full_path', full_path)
   with tf.gfile.GFile(full_path, 'rb') as fid:
     encoded_jpg = fid.read()
   encoded_jpg_io = io.BytesIO(encoded_jpg)
@@ -125,12 +120,13 @@ def dict_to_tf_example(data,
       print('No label detected in the xml format')
       return
   for obj in data['object']:
-    xmin.append(float(obj['bndbox']['xmin']) / width)
-    ymin.append(float(obj['bndbox']['ymin']) / height)
-    xmax.append(float(obj['bndbox']['xmax']) / width)
-    ymax.append(float(obj['bndbox']['ymax']) / height)
-    classes_text.append(obj['name'].encode('utf8'))
-    classes.append(label_map_dict[obj['name']])
+      if obj['name'] in ['11', '13', '14', '16']:
+            xmin.append(float(obj['bndbox']['xmin']) / width)
+            ymin.append(float(obj['bndbox']['ymin']) / height)
+            xmax.append(float(obj['bndbox']['xmax']) / width)
+            ymax.append(float(obj['bndbox']['ymax']) / height)
+            classes_text.append(obj['name'].encode('utf8'))
+            classes.append(label_map_dict[obj['name']])
 
   example = tf.train.Example(features=tf.train.Features(feature={
       'image/height': dataset_util.int64_feature(height),
@@ -192,42 +188,39 @@ def generate_cropped_images():
                 save_cropped_images(data, data_dir, label_map_dict, categories=categories, dataset_name = dataset)
 
 def main(_):
-  generate_cropped_images()
+  # generate_cropped_images()
 
-  # writer = tf.python_io.TFRecordWriter(FLAGS.output_path)
-  # datasets = ['custom', 'google-image', 'noor']
-  # categories = [11, 12, 13, 14, 15, 16, 17, 18,
-  #               21, 22, 23, 24, 25, 26, 27, 28,
-  #               31, 32, 33, 34, 35, 36, 37, 38,
-  #               41, 42, 43, 44, 45, 46, 47, 48]
-  # for dataset in datasets:
-  #     data_dir = os.path.join('data', dataset)
-  #     for category in categories:
-  #         examples_path = os.path.join(data_dir, 'ImageSets', 'Main', str(category) + '_' + FLAGS.set + '.txt')
-  #         label_map_dict = label_map_util.get_label_map_dict(os.path.join(data_dir, 'pascal_label_map.pbtxt'))
-  #         print('label_map_dict', label_map_dict)
-  #         annotations_dir = os.path.join(data_dir, FLAGS.annotations_dir)
-  #         examples_list = dataset_util.read_examples_list(examples_path)
-  #         examples_list = [x for x in examples_list if x]
-  #         print(examples_list)
-  #
-  #         for idx, example in enumerate(examples_list):
-  #           if idx % 100 == 0:
-  #             logging.info('On image %d of %d', idx, len(examples_list))
-  #           path = os.path.join(annotations_dir, example + '.xml')
-  #           with tf.gfile.GFile(path, 'r') as fid:
-  #             xml_str = fid.read()
-  #           xml = etree.fromstring(xml_str)
-  #           data = dataset_util.recursive_parse_xml_to_dict(xml)['annotation']
-  #           if 'object' not in data.keys():
-  #               print('No label, ignoring ', path)
-  #               continue
-  #           # save_cropped_images(data, data_dir, label_map_dict, category=category, dataset_name = dataset)
-  #
-  #
-  #           tf_example = dict_to_tf_example(data, FLAGS.data_dir, label_map_dict)
-  #           writer.write(tf_example.SerializeToString())
-  #         writer.close()
+    writer = tf.python_io.TFRecordWriter(FLAGS.output_path)
+    datasets = ['gonesse','rothschild', 'google-image', 'noor']
+    categories = [11, 13, 14, 16]
+    for dataset in datasets:
+        examples_list = []
+        data_dir = os.path.join('data', dataset)
+        print('data_dir', data_dir)
+        annotations_dir = os.path.join(data_dir, FLAGS.annotations_dir)
+        label_map_dict = label_map_util.get_label_map_dict(os.path.join(data_dir, 'pascal_label_map.pbtxt'))
+        for category in categories:
+            examples_path = os.path.join(data_dir, 'ImageSets', 'Main', str(category) + '_' + FLAGS.set + '.txt')
+            print(examples_path, dataset_util.read_examples_list(examples_path))
+            examples_list += dataset_util.read_examples_list(examples_path)
+
+        examples_list = list(set([x for x in examples_list if x]))
+        print('examples_list', examples_list)
+        for idx, example in enumerate(examples_list):
+            if idx % 10 == 0:
+                print('On image ', idx, ' of ', len(examples_list))
+            path = os.path.join(annotations_dir, example + '.xml')
+            with tf.gfile.GFile(path, 'r') as fid:
+                xml_str = fid.read()
+            xml = etree.fromstring(xml_str)
+            data = dataset_util.recursive_parse_xml_to_dict(xml)['annotation']
+            if 'object' not in data.keys():
+                print('No label, ignoring ', path)
+                continue
+
+            tf_example = dict_to_tf_example(data, data_dir, label_map_dict)
+            writer.write(tf_example.SerializeToString())
+    writer.close()
 
 
 if __name__ == '__main__':
