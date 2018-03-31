@@ -18,7 +18,7 @@ batch_size = 10
 batch_repeat = 32
 patch_size = 5
 depth = 32
-last_depth = 24
+last_depth = 50
 num_hidden = 128
 dropout = 0.8
 num_steps = 20001
@@ -45,8 +45,6 @@ def load_tooth(folder):
 
   dataset = dataset[0:num_images, :, :]
   np.random.shuffle(dataset)
-
-
   print('Full dataset tensor:', dataset.shape)
   print('Mean:', np.mean(dataset))
   print('Standard deviation:', np.std(dataset))
@@ -101,43 +99,12 @@ def merge_datasets(datasets):
     test_l = np.concatenate(tuple(test_l))
     return train_d, train_l, test_d, test_l
 
-def inception2d(x, in_channels, filter_count):
-    print(x)
-    # bias dimension = 3*filter_count and then the extra in_channels for the avg pooling
-    bias = tf.Variable(tf.truncated_normal([3 * filter_count + in_channels], stddev=0.1))
-
-    # 1x1
-    one_filter = tf.Variable(tf.truncated_normal([1, 1, in_channels, filter_count], stddev=0.1))
-    one_by_one = tf.nn.conv2d(x, one_filter, strides=[1, 1, 1, 1], padding='SAME')
-
-    # 3x3
-    three_filter = tf.Variable(tf.truncated_normal([3, 3, in_channels, filter_count], stddev=0.1))
-    three_by_three = tf.nn.conv2d(x, three_filter, strides=[1, 1, 1, 1], padding='SAME')
-
-    # 5x5
-    five_filter = tf.Variable(tf.truncated_normal([5, 5, in_channels, filter_count], stddev=0.1))
-    five_by_five = tf.nn.conv2d(x, five_filter, strides=[1, 1, 1, 1], padding='SAME')
-
-    # avg pooling
-    pooling = tf.nn.avg_pool(x, ksize=[1, 3, 3, 1], strides=[1, 1, 1, 1], padding='SAME')
-
-    x = tf.concat([one_by_one, three_by_three, five_by_five, pooling], axis=3)  # Concat in the 4th dim to stack
-    x = tf.nn.bias_add(x, bias)
-    print(x)
-    return tf.nn.relu(x)
-
 train_folders = [
                     'train/11', 'train/12', 'train/13', 'train/14', 'train/15', 'train/16', 'train/17', 'train/18',
                     'train/41', 'train/42', 'train/43', 'train/44', 'train/45', 'train/46', 'train/47', 'train/48',
                 ]
-#, 'train/27', 'train/36', 'train/37', 'train/46', 'train/47']
-
-# train_folders = [
-#                     'train/11', 'train/12', 'train/13', 'train/14'
-#                 ]
 
 dataset_names = maybe_pickle(train_folders)
-
 train_features, train_labels, test_features, test_labels = merge_datasets(dataset_names)
 
 num_labels = len(train_folders)
@@ -173,9 +140,8 @@ with graph.as_default():
     logits_weights = tf.Variable(tf.truncated_normal(
         [num_hidden, num_labels], stddev=0.1))
     logits_biases = tf.Variable(tf.constant(1.0, shape=[num_labels]))
-    # Model.
 
-    # print((image_height) // 8 , (image_width + 4) // 8 , 4 * depth, (image_height) // 8 * (image_width+ 4) // 8 * 4 * depth)
+    # Model.
     def model(data):
         print(data)
         # conv1 = inception2d(data, 1, depth)
@@ -202,12 +168,12 @@ with graph.as_default():
         return tf.matmul(hidden, logits_weights) + logits_biases
 
     logits = model(next_element)
-    loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=next_label, logits=logits))
+    loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=next_label, logits=logits))
     loss_summary = tf.summary.scalar('loss', loss)
 
     global_step = tf.Variable(0, trainable=False)
-    starter_learning_rate = 0.01
-    learning_rate = tf.train.exponential_decay(starter_learning_rate, global_step, num_steps, 0.9)
+    starter_learning_rate = 0.005
+    learning_rate = tf.train.exponential_decay(starter_learning_rate, global_step, num_steps, 0.96)
     optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss, global_step=global_step)
 
     train_prediction = tf.nn.softmax(logits)
@@ -219,6 +185,7 @@ with graph.as_default():
     merged = tf.summary.merge([loss_summary])
     merged_all = tf.summary.merge_all()
     train_writer = tf.summary.FileWriter('/tmp/train/')
+    saver = tf.train.Saver()
 
     step = 0
     with tf.train.MonitoredTrainingSession() as sess:
@@ -236,6 +203,10 @@ with graph.as_default():
                 _, l, predictions, summary = sess.run([optimizer, loss, train_prediction, merged])
             train_writer.add_summary(summary, step)
             step += 1
+
+            # if step % 500 == 0:
+            #      save_path = saver.save(sess, "model.ckpt")
+            #      print("Model saved in path: %s" % save_path)
 
             if step > num_steps:
                 break

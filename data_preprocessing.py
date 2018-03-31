@@ -31,7 +31,7 @@ flags.DEFINE_string('set', 'train', 'Convert training set, validation set or '
                     'merged set.')
 flags.DEFINE_string('annotations_dir', 'Annotations',
                     '(Relative) path to annotations directory.')
-flags.DEFINE_string('output_path', 'train.record', 'Path to output TFRecord')
+flags.DEFINE_string('output_path', flags.FLAGS.set + '.record', 'Path to output TFRecord')
 SETS = ['train', 'val', 'trainval', 'test']
 FLAGS = flags.FLAGS
 
@@ -201,7 +201,6 @@ def main(_):
         label_map_dict = label_map_util.get_label_map_dict(os.path.join(data_dir, 'pascal_label_map.pbtxt'))
         for category in categories:
             examples_path = os.path.join(data_dir, 'ImageSets', 'Main', str(category) + '_' + FLAGS.set + '.txt')
-            print(examples_path, dataset_util.read_examples_list(examples_path))
             examples_list += dataset_util.read_examples_list(examples_path)
 
         examples_list = list(set([x for x in examples_list if x]))
