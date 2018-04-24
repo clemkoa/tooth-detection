@@ -31,10 +31,12 @@ flags.DEFINE_string('set', 'train', 'Convert training set, validation set or '
                     'merged set.')
 flags.DEFINE_string('annotations_dir', 'Annotations',
                     '(Relative) path to annotations directory.')
-flags.DEFINE_string('output_path', flags.FLAGS.set + '.record', 'Path to output TFRecord')
+flags.DEFINE_string('output_path', os.path.join('data', flags.FLAGS.set + '.record'), 'Path to output TFRecord')
 SETS = ['train', 'val', 'trainval', 'test']
 FLAGS = flags.FLAGS
 
+label_golden = { 'implant': 1, 'endo': 2, 'restauration': 3, 'racine': 4 }
+selected = ['implant', 'endo', 'restauration', 'racine']
 
 def create_directory_if_not_exists(directory):
   if not os.path.exists(directory):
@@ -120,13 +122,14 @@ def dict_to_tf_example(data,
       print('No label detected in the xml format')
       return
   for obj in data['object']:
-      if obj['name'] in ['11', '13', '14', '16']:
+      if obj['name'] in selected:
+            # print(obj, label_map_dict[obj['name']])
             xmin.append(float(obj['bndbox']['xmin']) / width)
             ymin.append(float(obj['bndbox']['ymin']) / height)
             xmax.append(float(obj['bndbox']['xmax']) / width)
             ymax.append(float(obj['bndbox']['ymax']) / height)
             classes_text.append(obj['name'].encode('utf8'))
-            classes.append(label_map_dict[obj['name']])
+            classes.append(label_golden[obj['name']])
 
   example = tf.train.Example(features=tf.train.Features(feature={
       'image/height': dataset_util.int64_feature(height),
@@ -192,7 +195,7 @@ def main(_):
 
     writer = tf.python_io.TFRecordWriter(FLAGS.output_path)
     datasets = ['gonesse','rothschild', 'google-image', 'noor']
-    categories = [11, 13, 14, 16]
+    categories = selected
     for dataset in datasets:
         examples_list = []
         data_dir = os.path.join('data', dataset)

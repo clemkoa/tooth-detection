@@ -1,7 +1,5 @@
-noor_dataset
-object_detection
 *.record
 output
+eval/
 data/
 train/
-val/
