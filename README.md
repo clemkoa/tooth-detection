@@ -12,3 +12,21 @@
 - run a simple model on the data
 - run a better model
 - automatise installation
+
+
+# Commands
+
+```
+python ../models/research/object_detection/train.py \
+    --logtostderr \
+    --pipeline_config_path=/Users/clementjoudet/Desktop/dev/teeth/models/model/ssd.config \
+    --train_dir="/Users/clementjoudet/Desktop/dev/teeth/models/model/train"
+```
+
+```
+python ../models/research/object_detection/eval.py \
+    --logtostderr \
+    --pipeline_config_path=/Users/clementjoudet/Desktop/dev/teeth/models/model/ssd.config \
+    --checkpoint_dir="/Users/clementjoudet/Desktop/dev/teeth/models/model/train/" \
+    --eval_dir="/Users/clementjoudet/Desktop/dev/teeth/models/model/eval"
+```
