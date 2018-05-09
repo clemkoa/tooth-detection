@@ -204,7 +204,9 @@ def main(_):
         label_map_dict = label_map_util.get_label_map_dict(os.path.join(data_dir, 'pascal_label_map.pbtxt'))
         for category in categories:
             examples_path = os.path.join(data_dir, 'ImageSets', 'Main', str(category) + '_' + FLAGS.set + '.txt')
+            print(examples_path)
             examples_list += dataset_util.read_examples_list(examples_path)
+            print(category, len([x for x in dataset_util.read_examples_list(examples_path) if x != '']))
 
         examples_list = list(set([x for x in examples_list if x]))
         print('examples_list', examples_list)
