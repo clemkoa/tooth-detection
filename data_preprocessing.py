@@ -35,8 +35,8 @@ flags.DEFINE_string('output_path', os.path.join('data', flags.FLAGS.set + '.reco
 SETS = ['train', 'val', 'trainval', 'test']
 FLAGS = flags.FLAGS
 
-label_golden = { 'implant': 1, 'endo': 2, 'restauration': 3, 'racine': 4 }
-selected = ['implant', 'endo', 'restauration', 'racine']
+label_golden = { 'root': 1, 'implant': 2, 'restoration': 3, 'endodontic': 4 }
+selected = ['root', 'implant', 'restoration', 'endodontic']
 
 def create_directory_if_not_exists(directory):
   if not os.path.exists(directory):
@@ -57,12 +57,12 @@ def save_cropped_images(data,
     encoded_jpg = fid.read()
   encoded_jpg_io = io.BytesIO(encoded_jpg)
   image = PIL.Image.open(encoded_jpg_io)
-
   for i, obj in enumerate(data['object']):
-    if obj['name'] in ['Implant', 'implant', 'endo', 'Endo', 'restauration', 'Restauration', 'racine', 'Racine']:
+    # if obj['name'] in ['Implant', 'implant', 'endo', 'Endo', 'restauration', 'Restauration', 'racine', 'Racine']:
+    #     continue
+    if obj['name'] not in selected:
         continue
-    if int(obj['name']) not in categories:
-        continue
+    print(obj['name'])
     xmin = float(obj['bndbox']['xmin'])
     ymin = float(obj['bndbox']['ymin'])
     xmax = float(obj['bndbox']['xmax'])
@@ -194,7 +194,7 @@ def main(_):
   # generate_cropped_images()
 
     writer = tf.python_io.TFRecordWriter(FLAGS.output_path)
-    datasets = ['gonesse','rothschild', 'google-image', 'noor']
+    datasets = ['gonesse','rothschild', 'google', 'noor']
     categories = selected
     for dataset in datasets:
         examples_list = []
