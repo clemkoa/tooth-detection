@@ -60,15 +60,15 @@ def dict_to_tf_example(data,
   classes_text = []
   if 'object' not in data.keys():
       print('No label detected in the xml format')
-      return
-  for obj in data['object']:
-      if obj['name'] in selected:
-            xmin.append(float(obj['bndbox']['xmin']) / width)
-            ymin.append(float(obj['bndbox']['ymin']) / height)
-            xmax.append(float(obj['bndbox']['xmax']) / width)
-            ymax.append(float(obj['bndbox']['ymax']) / height)
-            classes_text.append(obj['name'].encode('utf8'))
-            classes.append(label_golden[obj['name']])
+  else:
+      for obj in data['object']:
+          if obj['name'] in selected:
+                xmin.append(float(obj['bndbox']['xmin']) / width)
+                ymin.append(float(obj['bndbox']['ymin']) / height)
+                xmax.append(float(obj['bndbox']['xmax']) / width)
+                ymax.append(float(obj['bndbox']['ymax']) / height)
+                classes_text.append(obj['name'].encode('utf8'))
+                classes.append(label_golden[obj['name']])
 
   example = tf.train.Example(features=tf.train.Features(feature={
       'image/height': dataset_util.int64_feature(height),
