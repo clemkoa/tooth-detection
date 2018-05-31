@@ -1,8 +1,8 @@
 # Teeth detector
 
+![Image 2](public/images/3.png "Image 2")
+![Image 3](public/images/5.png "Image 3")
 ![Image 1](public/images/1.png "Image 1")
-![Image 2](public/images/7.png "Image 2")
-![Image 3](public/images/4.png "Image 3")
 
 Dataset is private for the moment, but was made with a stomatologist surgeon, using VoTT for labeling. The export was made under the `Tensorflow Pascal VOC` format
 
