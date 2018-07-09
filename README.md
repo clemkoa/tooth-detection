@@ -24,6 +24,8 @@ The project is divided into two parts:
 - run a better model
 - automatise installation
 - augment dataset, especially for implants
+- transfer learning
+- attention network
 
 
 # Commands
@@ -31,16 +33,16 @@ The project is divided into two parts:
 ```
 python ../models/research/object_detection/train.py \
     --logtostderr \
-    --pipeline_config_path=/Users/clementjoudet/Desktop/dev/teeth/models/cloud/ssd-local.config \
-    --train_dir="/Users/clementjoudet/Desktop/dev/teeth/models/cloud/train"
+    --pipeline_config_path=/Users/clementjoudet/Desktop/dev/tooth-detection/models/cloud/ssd-local.config \
+    --train_dir="/Users/clementjoudet/Desktop/dev/tooth-detection/models/cloud/train"
 ```
 
 ```
 python ../models/research/object_detection/eval.py \
     --logtostderr \
-    --pipeline_config_path=/Users/clementjoudet/Desktop/dev/teeth/models/cloud/ssd-local.config \
-    --checkpoint_dir="/Users/clementjoudet/Desktop/dev/teeth/models/cloud/train/" \
-    --eval_dir="/Users/clementjoudet/Desktop/dev/teeth/models/cloud/eval"
+    --pipeline_config_path=/Users/clementjoudet/Desktop/dev/tooth-detection/models/cloud/ssd-local.config \
+    --checkpoint_dir="/Users/clementjoudet/Desktop/dev/tooth-detection/models/cloud/train/" \
+    --eval_dir="/Users/clementjoudet/Desktop/dev/tooth-detection/models/cloud/eval"
 ```
 
 
@@ -53,7 +55,7 @@ gcloud ml-engine jobs submit training tooth_jood_`date +%s` \
     --job-dir=gs://tooth-jood/data/ \
     --packages dist/object_detection-0.1.tar.gz,slim/dist/slim-0.1.tar.gz \
     --module-name object_detection.train \
-    --config /Users/clementjoudet/Desktop/dev/teeth/models/cloud/cloud.yml \
+    --config /Users/clementjoudet/Desktop/dev/tooth-detection/models/cloud/cloud.yml \
     --region europe-west1 \
     -- \
     --train_dir=gs://tooth-jood/data/ \

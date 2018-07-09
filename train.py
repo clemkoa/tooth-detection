@@ -4,13 +4,12 @@ import logging
 import io
 import PIL
 import pickle
-import imageio
 import math
 import numpy as np
 from PIL import Image
 from scipy import ndimage
 
-image_width = 100
+image_width = 200
 image_height = 200
 pixel_depth = 255.0  # Number of levels per pixel.
 num_channels = 1 # grayscale
@@ -101,7 +100,6 @@ def merge_datasets(datasets):
 
 train_folders = [
                     'train/11', 'train/12', 'train/13', 'train/14', 'train/15', 'train/16', 'train/17', 'train/18',
-                    'train/41', 'train/42', 'train/43', 'train/44', 'train/45', 'train/46', 'train/47', 'train/48',
                 ]
 
 dataset_names = maybe_pickle(train_folders)
