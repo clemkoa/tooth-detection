@@ -91,19 +91,16 @@ def dict_to_tf_example(data,
 
 def main(_):
     writer = tf.python_io.TFRecordWriter(FLAGS.output_path)
-    datasets = ['gonesse','rothschild', 'google', 'noor']
+    datasets = ['gonesse102', 'gonesse67', 'gonesse97', 'rothschild', 'google', 'noor']
     categories = selected
     for dataset in datasets:
         examples_list = []
         data_dir = os.path.join('data', dataset)
-        print('data_dir', data_dir)
         annotations_dir = os.path.join(data_dir, FLAGS.annotations_dir)
         label_map_dict = label_map_util.get_label_map_dict(os.path.join(data_dir, 'pascal_label_map.pbtxt'))
         for category in categories:
             examples_path = os.path.join(data_dir, 'ImageSets', 'Main', str(category) + '_' + FLAGS.set + '.txt')
-            print(examples_path)
             examples_list += dataset_util.read_examples_list(examples_path)
-            print(category, len([x for x in dataset_util.read_examples_list(examples_path) if x != '']))
 
         examples_list = list(set([x for x in examples_list if x]))
         print('examples_list', examples_list)
@@ -115,9 +112,6 @@ def main(_):
                 xml_str = fid.read()
             xml = etree.fromstring(xml_str)
             data = dataset_util.recursive_parse_xml_to_dict(xml)['annotation']
-            if 'object' not in data.keys():
-                print('No label, ignoring ', path)
-                continue
 
             tf_example = dict_to_tf_example(data, data_dir, label_map_dict)
             writer.write(tf_example.SerializeToString())

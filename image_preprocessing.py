@@ -2,7 +2,8 @@ import os
 import cv2
 import numpy as np
 
-datasets = ['gonesse','rothschild', 'google', 'noor']
+# datasets = ['gonesse','rothschild', 'google', 'noor']
+datasets = ['gonesse67', 'gonesse97']
 
 def equalize_clahe_image(image_path):
     img = cv2.imread(image_path, 0)
