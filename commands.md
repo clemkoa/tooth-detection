@@ -22,14 +22,14 @@ Train job
 ```
 gcloud ml-engine jobs submit training tooth_jood_`date +%s` \
     --runtime-version 1.5 \
-    --job-dir=gs://tooth-jood/data/ \
+    --job-dir=gs://tooth-jood/train/ \
     --packages dist/object_detection-0.1.tar.gz,slim/dist/slim-0.1.tar.gz \
     --module-name object_detection.train \
     --config /Users/clementjoudet/Desktop/dev/tooth-detection/models/cloud/cloud.yml \
     --region europe-west1 \
     -- \
-    --train_dir=gs://tooth-jood/data/ \
-    --pipeline_config_path=gs://tooth-jood/data/ssd.config
+    --train_dir=gs://tooth-jood/train/ \
+    --pipeline_config_path=gs://tooth-jood/faster_rcnn_resnet50_coco.config
 ```
 
 Stream logs

@@ -40,6 +40,8 @@ def dict_to_tf_example(data,
                        image_subdirectory='JPEGImages'):
 
   full_path = os.path.join(dataset_directory, image_subdirectory, data['filename'] + '.png')
+  if not os.path.isfile(full_path):
+      full_path = os.path.join(dataset_directory, image_subdirectory, data['filename'] + '.jpg')
   # print('full_path', full_path)
   with tf.gfile.GFile(full_path, 'rb') as fid:
     encoded_jpg = fid.read()
@@ -91,9 +93,10 @@ def dict_to_tf_example(data,
 
 def main(_):
     writer = tf.python_io.TFRecordWriter(FLAGS.output_path)
-    datasets = ['gonesse102', 'gonesse67', 'gonesse97', 'rothschild', 'google', 'noor']
+    datasets = ['gonesse102', 'gonesse67', 'gonesse97', 'rothschild', 'google', 'noor', 'ufba']
     categories = selected
     for dataset in datasets:
+        print(dataset)
         examples_list = []
         data_dir = os.path.join('data', dataset)
         annotations_dir = os.path.join(data_dir, FLAGS.annotations_dir)
