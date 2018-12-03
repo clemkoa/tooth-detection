@@ -22,12 +22,9 @@ flags.DEFINE_string('set', 'train', 'Convert training set, validation set or '
                     'merged set.')
 flags.DEFINE_string('annotations_dir', 'Annotations',
                     '(Relative) path to annotations directory.')
-flags.DEFINE_string('output_path', os.path.join('data', flags.FLAGS.set + '.record'), 'Path to output TFRecord')
+flags.DEFINE_string('output_path', os.path.join('data_index', flags.FLAGS.set + '.record'), 'Path to output TFRecord')
 SETS = ['train', 'val', 'trainval', 'test']
 FLAGS = flags.FLAGS
-
-label_golden = { 'root': 1, 'implant': 2, 'restoration': 3, 'endodontic': 4 }
-selected = ['root', 'implant', 'restoration', 'endodontic']
 
 def create_directory_if_not_exists(directory):
   if not os.path.exists(directory):
@@ -37,6 +34,7 @@ def create_directory_if_not_exists(directory):
 def dict_to_tf_example(data,
                        dataset_directory,
                        label_map_dict,
+                       selected,
                        image_subdirectory='JPEGImages'):
 
   full_path = os.path.join(dataset_directory, image_subdirectory, data['filename'] + '.png')
@@ -70,7 +68,7 @@ def dict_to_tf_example(data,
                 xmax.append(float(obj['bndbox']['xmax']) / width)
                 ymax.append(float(obj['bndbox']['ymax']) / height)
                 classes_text.append(obj['name'].encode('utf8'))
-                classes.append(label_golden[obj['name']])
+                classes.append(label_map_dict[obj['name']])
 
   example = tf.train.Example(features=tf.train.Features(feature={
       'image/height': dataset_util.int64_feature(height),
@@ -93,15 +91,16 @@ def dict_to_tf_example(data,
 
 def main(_):
     writer = tf.python_io.TFRecordWriter(FLAGS.output_path)
-    datasets = ['gonesse102', 'gonesse67', 'gonesse97', 'rothschild', 'google', 'noor', 'ufba']
-    categories = selected
+    datasets = ['google', 'iran', 'rothschild']
     for dataset in datasets:
         print(dataset)
         examples_list = []
-        data_dir = os.path.join('data', dataset)
+        data_dir = os.path.join('data_index', dataset)
         annotations_dir = os.path.join(data_dir, FLAGS.annotations_dir)
         label_map_dict = label_map_util.get_label_map_dict(os.path.join(data_dir, 'pascal_label_map.pbtxt'))
+        categories = list(label_map_dict.keys())
         for category in categories:
+            print(categories)
             examples_path = os.path.join(data_dir, 'ImageSets', 'Main', str(category) + '_' + FLAGS.set + '.txt')
             examples_list += dataset_util.read_examples_list(examples_path)
 
@@ -116,7 +115,7 @@ def main(_):
             xml = etree.fromstring(xml_str)
             data = dataset_util.recursive_parse_xml_to_dict(xml)['annotation']
 
-            tf_example = dict_to_tf_example(data, data_dir, label_map_dict)
+            tf_example = dict_to_tf_example(data, data_dir, label_map_dict, categories)
             writer.write(tf_example.SerializeToString())
     writer.close()
 
