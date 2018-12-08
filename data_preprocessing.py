@@ -1,35 +1,33 @@
-# -*- coding: utf-8 -*-
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import hashlib
 import tensorflow as tf
 import os
-import logging
-import io
 from lxml import etree
-import PIL.Image
-from PIL import Image
+import cv2
 
 from object_detection.utils import label_map_util
 from object_detection.utils import dataset_util
 
 flags = tf.app.flags
-flags.DEFINE_string('data_dir', '', 'Root directory to raw PASCAL VOC dataset.')
+flags.DEFINE_string('DATA_FOLDER', 'data', 'Root directory to raw PASCAL VOC dataset.')
 flags.DEFINE_string('set', 'train', 'Convert training set, validation set or '
                     'merged set.')
-flags.DEFINE_string('annotations_dir', 'Annotations',
-                    '(Relative) path to annotations directory.')
-flags.DEFINE_string('output_path', os.path.join('data_index', flags.FLAGS.set + '.record'), 'Path to output TFRecord')
-SETS = ['train', 'val', 'trainval', 'test']
 FLAGS = flags.FLAGS
 
 def create_directory_if_not_exists(directory):
-  if not os.path.exists(directory):
-    os.makedirs(directory)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
 
+def preprocess_image(image_path):
+    img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(16,16))
+    cl = clahe.apply(img)
+    return cv2.imencode('.jpeg', cl)[1].tostring()
+
+def get_image_full_path(dataset_directory, image_subdirectory, filename):
+    full_path = os.path.join(dataset_directory, image_subdirectory, filename + '.png')
+    if not os.path.isfile(full_path):
+        full_path = os.path.join(dataset_directory, image_subdirectory, filename + '.jpg')
+    return full_path
 
 def dict_to_tf_example(data,
                        dataset_directory,
@@ -37,17 +35,9 @@ def dict_to_tf_example(data,
                        selected,
                        image_subdirectory='JPEGImages'):
 
-  full_path = os.path.join(dataset_directory, image_subdirectory, data['filename'] + '.png')
-  if not os.path.isfile(full_path):
-      full_path = os.path.join(dataset_directory, image_subdirectory, data['filename'] + '.jpg')
-  # print('full_path', full_path)
-  with tf.gfile.GFile(full_path, 'rb') as fid:
-    encoded_jpg = fid.read()
-  encoded_jpg_io = io.BytesIO(encoded_jpg)
-  image = PIL.Image.open(encoded_jpg_io)
-  if image.format not in ['JPEG', 'PNG']:
-    raise ValueError('Image format not JPEG')
-  key = hashlib.sha256(encoded_jpg).hexdigest()
+  full_path = get_image_full_path(dataset_directory, image_subdirectory, data['filename'])
+
+  encoded_jpg = preprocess_image(full_path)
 
   width = int(data['size']['width'])
   height = int(data['size']['height'])
@@ -77,7 +67,6 @@ def dict_to_tf_example(data,
           data['filename'].encode('utf8')),
       'image/source_id': dataset_util.bytes_feature(
           data['filename'].encode('utf8')),
-      'image/key/sha256': dataset_util.bytes_feature(key.encode('utf8')),
       'image/encoded': dataset_util.bytes_feature(encoded_jpg),
       'image/format': dataset_util.bytes_feature('jpeg'.encode('utf8')),
       'image/object/bbox/xmin': dataset_util.float_list_feature(xmin),
@@ -90,17 +79,17 @@ def dict_to_tf_example(data,
   return example
 
 def main(_):
-    writer = tf.python_io.TFRecordWriter(FLAGS.output_path)
-    datasets = ['google', 'iran', 'rothschild']
+    datasets = ['implants', 'x102_output', 'x116_output', 'x200_output', 'x67_output', 'x90_output', 'x97_output']
+    output_path = os.path.join(flags.FLAGS.DATA_FOLDER, flags.FLAGS.set + '.record')
+    writer = tf.python_io.TFRecordWriter(output_path)
     for dataset in datasets:
         print(dataset)
         examples_list = []
-        data_dir = os.path.join('data_index', dataset)
-        annotations_dir = os.path.join(data_dir, FLAGS.annotations_dir)
+        data_dir = os.path.join(flags.FLAGS.DATA_FOLDER, dataset)
+        annotations_dir = os.path.join(data_dir, 'Annotations')
         label_map_dict = label_map_util.get_label_map_dict(os.path.join(data_dir, 'pascal_label_map.pbtxt'))
         categories = list(label_map_dict.keys())
         for category in categories:
-            print(categories)
             examples_path = os.path.join(data_dir, 'ImageSets', 'Main', str(category) + '_' + FLAGS.set + '.txt')
             examples_list += dataset_util.read_examples_list(examples_path)
 
