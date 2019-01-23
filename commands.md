@@ -26,7 +26,7 @@ gcloud ml-engine jobs submit training tooth_jood_`date +%Y-%m-%d:%H-%M-%S` \
 Export model for inference
 ```
 # From tensorflow/models/research/
-INPUT_TYPE=tf_example
+INPUT_TYPE=image_tensor
 PIPELINE_CONFIG_PATH=/Users/clementjoudet/Desktop/dev/tooth-detection/models/index/index_local.config
 TRAINED_CKPT_PREFIX=/Users/clementjoudet/Desktop/dev/tooth-detection/models/index/cloud/new/model.ckpt-6654
 EXPORT_DIR=/Users/clementjoudet/Desktop/dev/tooth-detection/models/index/cloud/inference
