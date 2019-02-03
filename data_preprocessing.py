@@ -66,11 +66,12 @@ def dict_to_tf_example(data,
         for obj in data['object']:
             if obj['name'] in categories:
                 if flip:
+
                     c = str(get_horizontal_flipped_index(int(obj['name'])))
-                    xmin.append(1.0 - float(obj['bndbox']['xmin']) / width)
-                    ymin.append(1.0 - float(obj['bndbox']['ymin']) / height)
-                    xmax.append(1.0 - float(obj['bndbox']['xmax']) / width)
-                    ymax.append(1.0 - float(obj['bndbox']['ymax']) / height)
+                    xmin.append(1.0 - float(obj['bndbox']['xmax']) / width)
+                    ymin.append(float(obj['bndbox']['ymin']) / height)
+                    xmax.append(1.0 - float(obj['bndbox']['xmin']) / width)
+                    ymax.append(float(obj['bndbox']['ymax']) / height)
                     classes_text.append(c.encode('utf8'))
                     classes.append(label_map_dict[c])
                 else:
