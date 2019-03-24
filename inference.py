@@ -3,7 +3,9 @@ import os
 import sys
 import tensorflow as tf
 from matplotlib import pyplot as plt
+import random
 from PIL import Image
+import json
 import cv2
 
 # This is needed since the notebook is stored in the object_detection folder.
@@ -39,15 +41,8 @@ with detection_graph.as_default():
 
 category_index = label_map_util.create_category_index_from_labelmap(PATH_TO_LABELS, use_display_name=True)
 
-# For the sake of simplicity we will use only 2 images:
-# image1.jpg
-# image2.jpg
-# If you want to test the code with your images, just add path to the images to the TEST_IMAGE_PATHS.
-PATH_TO_TEST_IMAGES_DIR = '/Users/clementjoudet/Desktop/dev/tooth-detection/data/google_index/JPEGImages'
+PATH_TO_TEST_IMAGES_DIR = '/Users/clementjoudet/Desktop/dev/tooth-detection/data/test/JPEGImages'
 TEST_IMAGE_PATHS = [ os.path.join(PATH_TO_TEST_IMAGES_DIR, '{}.png'.format(i)) for i in range(1, 10) ]
-
-# Size, in inches, of the output images.
-IMAGE_SIZE = (12, 8)
 
 def run_inference_for_single_image(image, graph):
   with graph.as_default():
@@ -95,10 +90,13 @@ def run_inference_for_single_image(image, graph):
         output_dict['detection_masks'] = output_dict['detection_masks'][0]
   return output_dict
 
+vott_output = {}
 
 for image_path in TEST_IMAGE_PATHS:
     # image = Image.open(image_path)
     image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+
+    height, width = image.shape
 
     # the array based representation of the image will be used later in order to prepare the
     # result image with boxes and labels on it.
@@ -108,16 +106,62 @@ for image_path in TEST_IMAGE_PATHS:
     # Actual detection.
     output_dict = run_inference_for_single_image(image_np, detection_graph)
     # Visualization of the results of a detection.
-    print(output_dict)
-    vis_util.visualize_boxes_and_labels_on_image_array(
-        image_np,
-        output_dict['detection_boxes'],
-        output_dict['detection_classes'],
-        output_dict['detection_scores'],
-        category_index,
-        instance_masks=output_dict.get('detection_masks'),
-        use_normalized_coordinates=True,
-        line_thickness=8)
-    im = Image.fromarray(image_np)
-    print(im)
-    im.show()
+    detection_boxes = output_dict['detection_boxes']
+    detection_boxes[:, 0] = detection_boxes[:, 0] * height
+    detection_boxes[:, 2] = detection_boxes[:, 2] * height
+    detection_boxes[:, 1] = detection_boxes[:, 1] * width
+    detection_boxes[:, 3] = detection_boxes[:, 3] * width
+    detection_boxes = detection_boxes.astype(int)
+    SCORE_THRESHOLD = 0.5
+    vott_output[image_path.split('/')[-1]] = []
+    id = 0
+    cats = []
+    for i in range(len(detection_boxes)):
+        if output_dict['detection_scores'][i] > SCORE_THRESHOLD:
+            cat = category_index[output_dict['detection_classes'][i]]['name']
+            ymin, xmin, ymax, xmax = detection_boxes[i]
+            cats.append(cat)
+            obj = {
+                'x1': xmin,
+                'y1': ymin,
+                'x2': xmax,
+                'y2': ymax,
+                'width': width,
+                'height': height,
+                'box': {
+                    'x1': xmin,
+                    'y1': ymin,
+                    'x2': xmax,
+                    'y2': ymax
+                },
+                'id': id,
+                'type': 'rect',
+                'tags': [cat],
+            }
+            id += 1
+            vott_output[image_path.split('/')[-1]].append(obj)
+
+
+    r = lambda: random.randint(0,255)
+
+    final_obj = {
+        'frames': vott_output,
+        'framerate': 1,
+        'tags': ','.join(list(set(cats))),
+        'suggestiontype':'track',
+        'scd': False,
+        'visitedFrames': list(vott_output.keys()),
+        'tag_colors':['#%02X%02X%02X' % (r(),r(),r()) for j in range(len(list(set(cats))))]
+    }
+    print(json.dumps(final_obj, separators=(',',':')))
+    # vis_util.visualize_boxes_and_labels_on_image_array(
+    #     image_np,
+    #     output_dict['detection_boxes'],
+    #     output_dict['detection_classes'],
+    #     output_dict['detection_scores'],
+    #     category_index,
+    #     instance_masks=output_dict.get('detection_masks'),
+    #     use_normalized_coordinates=True,
+    #     line_thickness=8)
+    # im = Image.fromarray(image_np)
+    # im.show()
