@@ -91,7 +91,9 @@ def run_inference_for_single_image(image, graph):
   return output_dict
 
 vott_output = {}
+output_path = 'data/test/JPEGImages.json'
 
+id = 0
 for image_path in TEST_IMAGE_PATHS:
     # image = Image.open(image_path)
     image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
@@ -114,7 +116,6 @@ for image_path in TEST_IMAGE_PATHS:
     detection_boxes = detection_boxes.astype(int)
     SCORE_THRESHOLD = 0.5
     vott_output[image_path.split('/')[-1]] = []
-    id = 0
     cats = []
     for i in range(len(detection_boxes)):
         if output_dict['detection_scores'][i] > SCORE_THRESHOLD:
@@ -147,13 +148,16 @@ for image_path in TEST_IMAGE_PATHS:
     final_obj = {
         'frames': vott_output,
         'framerate': 1,
-        'tags': ','.join(list(set(cats))),
+        'inputTags': ','.join(list(set(cats))),
         'suggestiontype':'track',
         'scd': False,
-        'visitedFrames': list(vott_output.keys()),
+        'visitedFrames': list(vott_output.keys())[::-1],
         'tag_colors':['#%02X%02X%02X' % (r(),r(),r()) for j in range(len(list(set(cats))))]
     }
-    print(json.dumps(final_obj, separators=(',',':')))
+
+    outfile = open(output_path, 'w')
+    json.dump(final_obj, outfile, separators=(',',':'), sort_keys=True)
+    outfile.close()
     # vis_util.visualize_boxes_and_labels_on_image_array(
     #     image_np,
     #     output_dict['detection_boxes'],
