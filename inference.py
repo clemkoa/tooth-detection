@@ -9,8 +9,8 @@ import cv2
 # This is needed since the notebook is stored in the object_detection folder.
 sys.path.append("..")
 from object_detection.utils import ops as utils_ops
-from utils import label_map_util
-from utils import visualization_utils as vis_util
+from object_detection.utils import label_map_util
+from object_detection.utils import visualization_utils as vis_util
 
 def preprocess_image(img):
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(16,16))
@@ -97,25 +97,27 @@ def run_inference_for_single_image(image, graph):
 
 
 for image_path in TEST_IMAGE_PATHS:
-  # image = Image.open(image_path)
-  image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+    # image = Image.open(image_path)
+    image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
-  # the array based representation of the image will be used later in order to prepare the
-  # result image with boxes and labels on it.
-  image_np = load_image_into_numpy_array(image)
-  # Expand dimensions since the model expects images to have shape: [1, None, None, 3]
-  image_np_expanded = np.expand_dims(image_np, axis=0)
-  # Actual detection.
-  output_dict = run_inference_for_single_image(image_np, detection_graph)
-  # Visualization of the results of a detection.
-  vis_util.visualize_boxes_and_labels_on_image_array(
-      image_np,
-      output_dict['detection_boxes'],
-      output_dict['detection_classes'],
-      output_dict['detection_scores'],
-      category_index,
-      instance_masks=output_dict.get('detection_masks'),
-      use_normalized_coordinates=True,
-      line_thickness=8)
-  im = Image.fromarray(image_np)
-  im.show()
+    # the array based representation of the image will be used later in order to prepare the
+    # result image with boxes and labels on it.
+    image_np = load_image_into_numpy_array(image)
+    # Expand dimensions since the model expects images to have shape: [1, None, None, 3]
+    image_np_expanded = np.expand_dims(image_np, axis=0)
+    # Actual detection.
+    output_dict = run_inference_for_single_image(image_np, detection_graph)
+    # Visualization of the results of a detection.
+    print(output_dict)
+    vis_util.visualize_boxes_and_labels_on_image_array(
+        image_np,
+        output_dict['detection_boxes'],
+        output_dict['detection_classes'],
+        output_dict['detection_scores'],
+        category_index,
+        instance_masks=output_dict.get('detection_masks'),
+        use_normalized_coordinates=True,
+        line_thickness=8)
+    im = Image.fromarray(image_np)
+    print(im)
+    im.show()

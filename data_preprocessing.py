@@ -4,6 +4,7 @@ import os
 import glob
 from lxml import etree
 import cv2
+from PIL import Image
 
 from object_detection.utils import label_map_util
 from object_detection.utils import dataset_util
@@ -24,6 +25,7 @@ def preprocess_image(image_path, horizontal_flip=False):
     cl = clahe.apply(img)
     if horizontal_flip:
         cl = cv2.flip(cl, 1)
+    # Image.fromarray(cl).show()
     return cv2.imencode('.jpeg', cl)[1].tostring()
 
 def get_image_full_path(dataset_directory, image_subdirectory, filename):
@@ -140,6 +142,7 @@ def extract_dataset(writer, dataset):
         writer.write(tf_example.SerializeToString())
         tf_augmented_example = extract_augmented_datapoint(example, annotations_dir, data_dir, label_map_dict, categories)
         writer.write(tf_augmented_example.SerializeToString())
+        # return
 
 def main(_):
     output_path = os.path.join(flags.FLAGS.data_folder, flags.FLAGS.set + '_index.record')

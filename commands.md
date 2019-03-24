@@ -28,7 +28,7 @@ Export model for inference
 # From tensorflow/models/research/
 INPUT_TYPE=image_tensor
 PIPELINE_CONFIG_PATH=/Users/clementjoudet/Desktop/dev/tooth-detection/models/index/index_local.config
-TRAINED_CKPT_PREFIX=/Users/clementjoudet/Desktop/dev/tooth-detection/models/index/cloud/new/model.ckpt-6654
+TRAINED_CKPT_PREFIX=/Users/clementjoudet/Desktop/dev/tooth-detection/models/index/cloud/new/model.ckpt-13842
 EXPORT_DIR=/Users/clementjoudet/Desktop/dev/tooth-detection/models/index/cloud/inference
 python object_detection/export_inference_graph.py \
     --input_type=${INPUT_TYPE} \
