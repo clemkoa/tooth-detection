@@ -8,6 +8,8 @@ from PIL import Image
 import json
 import cv2
 
+# This is needed since the notebook is stored in the object_detection folder.
+sys.path.append("..")
 from object_detection.utils import ops as utils_ops
 from object_detection.utils import label_map_util
 from object_detection.utils import visualization_utils as vis_util
@@ -88,19 +90,79 @@ def run_inference_for_single_image(image, graph):
         output_dict['detection_masks'] = output_dict['detection_masks'][0]
   return output_dict
 
+vott_output = {}
+output_path = 'data/test/JPEGImages.json'
+
+id = 0
+cats = []
 for image_path in TEST_IMAGE_PATHS:
     image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+
+    height, width = image.shape
+
     image_np = load_image_into_numpy_array(image)
     image_np_expanded = np.expand_dims(image_np, axis=0)
     output_dict = run_inference_for_single_image(image_np, detection_graph)
-    vis_util.visualize_boxes_and_labels_on_image_array(
-        image_np,
-        output_dict['detection_boxes'],
-        output_dict['detection_classes'],
-        output_dict['detection_scores'],
-        category_index,
-        instance_masks=output_dict.get('detection_masks'),
-        use_normalized_coordinates=True,
-        line_thickness=8)
-    im = Image.fromarray(image_np)
-    im.show()
+
+    detection_boxes = output_dict['detection_boxes']
+    detection_boxes[:, 0] = detection_boxes[:, 0] * height
+    detection_boxes[:, 2] = detection_boxes[:, 2] * height
+    detection_boxes[:, 1] = detection_boxes[:, 1] * width
+    detection_boxes[:, 3] = detection_boxes[:, 3] * width
+    detection_boxes = detection_boxes.astype(int)
+    SCORE_THRESHOLD = 0.5
+    vott_output[image_path.split('/')[-1]] = []
+    for i in range(len(detection_boxes)):
+        if output_dict['detection_scores'][i] > SCORE_THRESHOLD:
+            cat = category_index[output_dict['detection_classes'][i]]['name']
+            ymin, xmin, ymax, xmax = detection_boxes[i]
+            cats.append(cat)
+            obj = {
+                'x1': xmin,
+                'y1': ymin,
+                'x2': xmax,
+                'y2': ymax,
+                'width': width,
+                'height': height,
+                'box': {
+                    'x1': xmin,
+                    'y1': ymin,
+                    'x2': xmax,
+                    'y2': ymax
+                },
+                "points": [{
+                        "x": xmin,
+                        "y": ymin
+                    }, {
+                        "x": xmax,
+                        "y": ymin
+                    }, {
+                        "x": xmax,
+                        "y": ymax
+                    }, {
+                        "x": xmin,
+                        "y": ymax
+                    }],
+                'id': id,
+                'type': 'rect',
+                'tags': [str(cat)],
+            }
+            id += 1
+            vott_output[image_path.split('/')[-1]].append(obj)
+
+
+    r = lambda: random.randint(0,255)
+
+    final_obj = {
+        'frames': vott_output,
+        'framerate': 1,
+        'inputTags': ','.join(list(set(cats))),
+        'suggestiontype': 'track',
+        'scd': False,
+        'visitedFrames': list(vott_output.keys())[::-1],
+        'tag_colors':['#%02X%02X%02X' % (r(),r(),r()) for j in range(len(list(set(cats))))]
+    }
+
+    outfile = open(output_path, 'w')
+    json.dump(final_obj, outfile, separators=(',',':'))
+    outfile.close()
