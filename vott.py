@@ -1,6 +1,7 @@
 import numpy as np
 import os
 import sys
+import glob
 import tensorflow as tf
 from matplotlib import pyplot as plt
 import random
@@ -42,7 +43,7 @@ with detection_graph.as_default():
 category_index = label_map_util.create_category_index_from_labelmap(PATH_TO_LABELS, use_display_name=True)
 
 PATH_TO_TEST_IMAGES_DIR = '/Users/clementjoudet/Desktop/dev/tooth-detection/data/test/JPEGImages'
-TEST_IMAGE_PATHS = [ os.path.join(PATH_TO_TEST_IMAGES_DIR, '{}.png'.format(i)) for i in range(1, 10) ]
+TEST_IMAGE_PATHS = glob.glob(PATH_TO_TEST_IMAGES_DIR + '/*.png')
 
 def run_inference_for_single_image(image, graph):
   with graph.as_default():
@@ -96,6 +97,7 @@ output_path = 'data/test/JPEGImages.json'
 id = 0
 cats = []
 for image_path in TEST_IMAGE_PATHS:
+    print(image_path)
     image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
     height, width = image.shape
