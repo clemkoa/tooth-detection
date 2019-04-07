@@ -92,7 +92,7 @@ def run_inference_for_single_image(image, graph):
   return output_dict
 
 vott_output = {}
-output_path = 'data/test/JPEGImages.json'
+output_path = PATH_TO_TEST_IMAGES_DIR + '.json'
 
 id = 0
 cats = []
