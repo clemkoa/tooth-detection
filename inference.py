@@ -1,12 +1,12 @@
 import numpy as np
 import os
 import sys
+import glob
 import tensorflow as tf
-from matplotlib import pyplot as plt
 import random
-from PIL import Image
 import json
 import cv2
+from PIL import Image
 
 from object_detection.utils import ops as utils_ops
 from object_detection.utils import label_map_util
@@ -17,7 +17,7 @@ dir_path = os.path.dirname(os.path.realpath(__file__))
 flags = tf.app.flags
 flags.DEFINE_string('PATH_TO_FROZEN_GRAPH', os.path.join(dir_path, 'models', 'index', 'cloud', 'inference', 'frozen_inference_graph.pb'), 'Path to frozen graph')
 flags.DEFINE_string('PATH_TO_LABELS', os.path.join(dir_path, 'data', 'pascal_label_map_index.pbtxt'), 'Path to label map')
-flags.DEFINE_string('PATH_TO_TEST_IMAGES_DIR', os.path.join(dir_path, 'data', 'google_index', 'JPEGImages'), 'Path to image folder')
+flags.DEFINE_string('PATH_TO_TEST_IMAGES_DIR', os.path.join(dir_path, 'data', 'iran_index', 'JPEGImages'), 'Path to image folder')
 FLAGS = flags.FLAGS
 
 def preprocess_image(img):
@@ -62,7 +62,7 @@ def run_inference_for_single_image(image, graph):
 
 if __name__ == "__main__":
     category_index = label_map_util.create_category_index_from_labelmap(FLAGS.PATH_TO_LABELS, use_display_name=True)
-    TEST_IMAGE_PATHS = [os.path.join(FLAGS.PATH_TO_TEST_IMAGES_DIR, '{}.png'.format(i)) for i in range(1, 10)]
+    TEST_IMAGE_PATHS = glob.glob(os.path.join(FLAGS.PATH_TO_TEST_IMAGES_DIR, '*.png'))
 
     detection_graph = tf.Graph()
     with detection_graph.as_default():
@@ -84,6 +84,7 @@ if __name__ == "__main__":
             output_dict['detection_scores'],
             category_index,
             use_normalized_coordinates=True,
+            max_boxes_to_draw=50,
             line_thickness=4)
         im = Image.fromarray(image_np)
         im.show()

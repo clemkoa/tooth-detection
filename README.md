@@ -47,5 +47,8 @@ python <path_to_tensorflow>/models/research/object_detection/model_main.py \
 ## Inference
 
 ```
-python inference.py
+python inference.py \
+    --PATH_TO_FROZEN_GRAPH=<path_to_tooth-detection>/<path_to_frozen_graph>/frozen_inference_graph.pb \
+    --PATH_TO_TEST_IMAGES_DIR=<path_to_tooth-detection>/data/iran_index/JPEGImages \
+    --PATH_TO_LABELS=<path_to_tooth-detection>/data/pascal_label_map_index.pbtxt
 ```
