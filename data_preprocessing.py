@@ -68,7 +68,6 @@ def dict_to_tf_example(data,
         for obj in data['object']:
             if obj['name'] in categories:
                 if flip:
-
                     c = str(get_horizontal_flipped_index(int(obj['name'])))
                     xmin.append(1.0 - float(obj['bndbox']['xmax']) / width)
                     ymin.append(float(obj['bndbox']['ymin']) / height)

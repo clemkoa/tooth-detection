@@ -13,10 +13,39 @@ The project is divided into two parts:
 
 ## Installation
 
-- Download the datasets from the google drive
-- Git clone https://github.com/tensorflow/models/, and run ```export PYTHONPATH=$PYTHONPATH:`pwd`:`pwd`/slim``` in   `/models/research`
+- Download the datasets from the google drive (datasets are private at the moment)
+- Install tensorflow object detection: https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/installation.md
+- Install Cloud SDK to run on google cloud https://cloud.google.com/sdk/
 
 
-## TODO
-- automatise installation
-- augment dataset, especially for implants
+```
+pip install -r requirements.txt
+
+# Tensorflow Object Detection API
+git clone git@github.com:tensorflow/models.git
+
+git clone https://github.com/cocodataset/cocoapi.git
+cd cocoapi/PythonAPI
+make
+cp -r pycocotools <path_to_tensorflow>/models/research/
+
+# From tensorflow/models/research/
+export PYTHONPATH=$PYTHONPATH:`pwd`:`pwd`/slim
+```
+
+
+## Training
+
+```
+python <path_to_tensorflow>/models/research/object_detection/model_main.py \
+    --pipeline_config_path=<path_to_tooth-detection>/tooth-detection/models/transfer/faster_rcnn_resnet50_coco.config \
+    --model_dir=<path_to_tooth-detection>/tooth-detection/models/transfer/new_version \
+    --num_train_steps=100000 \
+    --alsologtostderr
+```
+
+## Inference
+
+```
+python inference.py
+```
