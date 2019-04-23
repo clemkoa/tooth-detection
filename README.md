@@ -6,9 +6,9 @@
 
 Dataset is private for the moment, but was made with a stomatologist surgeon, using VoTT for labeling. The export was made under the `Tensorflow Pascal VOC` format
 
-The project is divided into two parts:
-1. Extract the labels from the teeth and train a CNN to identify the tooth number (`train.py`). This was a quick experiment and no effort is currently spent on it
-2. Train an object detection pipeline with Tensorflow in order to detect tooth restoration, endodotic treatment and implants
+The project is divided into two tasks:
+1. Detect tooth restoration, endodotic treatment and implants (models/transfer)
+2. Detect teeth and identify their ISO Dental Notation (models/index)
 
 
 ## Installation

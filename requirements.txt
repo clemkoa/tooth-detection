@@ -1,5 +1,4 @@
 tensorflow
-tensorflow-gpu
 Cython
 contextlib2
 pillow
