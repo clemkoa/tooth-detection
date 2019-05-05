@@ -13,8 +13,6 @@ def merge_datasets(dataset, folder1, folder2, output_folder):
             frame = str(int(frame) + 1) + '.png'
         if frame not in all_frames.keys():
             print(frame, 'not in data2')
-            print(all_frames.keys())
-            return
         all_frames[frame] = all_frames.get(frame, []) + bboxes
 
     all_input_tags = ','.join(data1['inputTags'].split(',') + data2['inputTags'].split(','))
