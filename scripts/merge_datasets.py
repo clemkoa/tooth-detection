@@ -9,7 +9,7 @@ def merge_datasets(dataset, folder1, folder2, output_folder):
 
     all_frames = data2['frames'].copy()
     for frame, bboxes in data1['frames'].items():
-        if 'png' not in frame:
+        if 'png' not in frame and 'jpg' not in frame:
             frame = str(int(frame) + 1) + '.png'
         if frame not in all_frames.keys():
             print(frame, 'not in data2')
@@ -37,10 +37,9 @@ def main():
         merge_datasets(dataset, folder1, folder2, output_folder)
 
         folder1 = '/Users/clementjoudet/Desktop/perso/tooth-detection/dataset/implant-restoration-endodontic'
-        folder2 = '/Users/clementjoudet/Desktop/tooth'
-        merge_datasets(dataset, folder1, folder2, output_folder)
+        merge_datasets(dataset, folder1, output_folder, output_folder)
 
-output_folder = '/Users/clementjoudet/Desktop/tooth/'
+output_folder = '/Users/clementjoudet/Desktop/perso/tooth-detection/dataset/root-implant-restoration-endodontic-apical_lesion'
 datasets = ['gonesse_x67', 'gonesse_x97', 'gonesse_x102', 'google_x90',
-            'iran_x116', 'rothschild_x200']
+            'iran_x116', 'rothschild_x200', 'brazil_cat8', 'brazil_cat10']
 main()
