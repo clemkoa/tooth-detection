@@ -2,17 +2,20 @@ import hashlib
 import tensorflow as tf
 import os
 import glob
-from lxml import etree
 import cv2
+import random
+from lxml import etree
 from PIL import Image
+from shutil import copyfile
 
 from object_detection.utils import label_map_util
 from object_detection.utils import dataset_util
 
+
+RANDOM_SEED = 42
 flags = tf.app.flags
-flags.DEFINE_string('data_folder', 'data', 'Root directory to raw PASCAL VOC dataset.')
-flags.DEFINE_string('set', 'train', 'Convert training set, validation set or '
-                    'merged set.')
+flags.DEFINE_string('data_folder', 'data', 'Root directory to raw PASCAL VOC datasets.')
+flags.DEFINE_float('train_eval_ratio', 0.8, 'Ratio of training examples from all examples.')
 FLAGS = flags.FLAGS
 
 def create_directory_if_not_exists(directory):
@@ -51,6 +54,8 @@ def dict_to_tf_example(data,
                        flip=False):
 
     full_path = get_image_full_path(dataset_directory, image_subdirectory, data['filename'])
+    # cop = 'data/inference/' + dataset_directory.split('/')[-2] + '-' + data['filename'] + '.' + full_path.split('.')[-1]
+    # copyfile(full_path, cop)
     encoded_jpg = preprocess_image(full_path, horizontal_flip=flip)
 
     width = int(data['size']['width'])
@@ -68,6 +73,7 @@ def dict_to_tf_example(data,
         for obj in data['object']:
             if obj['name'] in categories:
                 if flip:
+                    print('flip')
                     c = str(get_horizontal_flipped_index(int(obj['name'])))
                     xmin.append(1.0 - float(obj['bndbox']['xmax']) / width)
                     ymin.append(float(obj['bndbox']['ymin']) / height)
@@ -104,12 +110,8 @@ def dict_to_tf_example(data,
     return example
 
 def extract_examples_list(dataset, categories, data_dir):
-    examples_list = []
-    for category in categories:
-        examples_path = os.path.join(data_dir, 'ImageSets', 'Main', str(category) + '_' + FLAGS.set + '.txt')
-        examples_list += dataset_util.read_examples_list(examples_path)
-
-    return list(set([x for x in examples_list if x]))
+    all_examples = [p.split('/')[-1].split('.xml')[0] for p in glob.glob(os.path.join(data_dir, 'Annotations', '*.xml'))]
+    return all_examples
 
 def get_data(example, annotations_dir):
     path = os.path.join(annotations_dir, example + '.xml')
@@ -123,33 +125,59 @@ def extract_datapoint(example, annotations_dir, data_dir, label_map_dict, catego
     tf_example = dict_to_tf_example(data, data_dir, label_map_dict, categories)
     return tf_example
 
-def extract_augmented_datapoint(example, annotations_dir, data_dir, label_map_dict, categories):
+def extract_flipped_datapoint(example, annotations_dir, data_dir, label_map_dict, categories):
     data = get_data(example, annotations_dir)
     tf_example = dict_to_tf_example(data, data_dir, label_map_dict, categories, flip=True)
     return tf_example
 
-def extract_dataset(writer, dataset):
+def extract_dataset(dataset):
     data_dir = dataset
     annotations_dir = os.path.join(data_dir, 'Annotations')
     label_map_dict = label_map_util.get_label_map_dict(os.path.join(data_dir, 'pascal_label_map.pbtxt'))
     categories = list(label_map_dict.keys())
-    examples_list = extract_examples_list(dataset, categories, data_dir)
-    for idx, example in enumerate(examples_list):
-        if idx % 10 == 0:
-            print('On image ', idx, ' of ', len(examples_list))
-        tf_example = extract_datapoint(example, annotations_dir, data_dir, label_map_dict, categories)
-        writer.write(tf_example.SerializeToString())
-        tf_augmented_example = extract_augmented_datapoint(example, annotations_dir, data_dir, label_map_dict, categories)
-        writer.write(tf_augmented_example.SerializeToString())
+    all_examples_list = extract_examples_list(dataset, categories, data_dir)
+    datapoints = []
+    for idx, example in enumerate(all_examples_list):
+        datapoints.append(extract_datapoint(example, annotations_dir, data_dir, label_map_dict, categories))
+        # writer.write(tf_example.SerializeToString())
+        # tf_augmented_example = extract_flipped_datapoint(example, annotations_dir, data_dir, label_map_dict, categories)
+        # writer.write(tf_augmented_example.SerializeToString())
         # return
 
-def main(_):
-    output_path = os.path.join(flags.FLAGS.data_folder, flags.FLAGS.set + '_index.record')
-    writer = tf.python_io.TFRecordWriter(output_path)
-    datasets = glob.glob(flags.FLAGS.data_folder + '/*_index/')
+    random.seed(RANDOM_SEED)
+    random.shuffle(datapoints)
+    limit = int(len(datapoints) * flags.FLAGS.train_eval_ratio)
+    training_examples = datapoints[:limit]
+    eval_examples = datapoints[limit:]
+    return training_examples, eval_examples
+
+def extract_all_datasets(datasets):
+    training = []
+    eval = []
     for dataset in datasets:
-        extract_dataset(writer, dataset)
-    writer.close()
+        print(dataset)
+        t, e = extract_dataset(dataset)
+        training += t
+        eval += e
+    return training, eval
+
+def main(_):
+    match = '_output'
+    training_path = os.path.join(flags.FLAGS.data_folder, 'train' + match + '.record')
+    val_path = os.path.join(flags.FLAGS.data_folder, 'val' + match + '.record')
+    train_writer = tf.python_io.TFRecordWriter(training_path)
+    val_writer = tf.python_io.TFRecordWriter(val_path)
+    datasets = glob.glob(flags.FLAGS.data_folder + '/*' + match + '/')
+    i = 0
+    training, eval = extract_all_datasets(datasets)
+    print('Training examples', len(training))
+    print('Eval examples', len(eval))
+    for tf_example in training:
+        train_writer.write(tf_example.SerializeToString())
+    train_writer.close()
+    for tf_example in eval:
+        val_writer.write(tf_example.SerializeToString())
+    val_writer.close()
 
 if __name__ == '__main__':
   tf.app.run()
