@@ -87,6 +87,9 @@ def dict_to_tf_example(data,
                     ymin.append(float(obj['bndbox']['ymin']) / height)
                     xmax.append(float(obj['bndbox']['xmax']) / width)
                     ymax.append(float(obj['bndbox']['ymax']) / height)
+                    if max([float(obj['bndbox']['xmin']) / width, float(obj['bndbox']['ymin']) / height, float(obj['bndbox']['xmax']) / width, float(obj['bndbox']['ymax']) / height]) > 1.0:
+                        print('error')
+                        raise Exception('oops')
                     classes_text.append(c.encode('utf8'))
                     classes.append(label_map_dict[c])
 

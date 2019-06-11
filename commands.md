@@ -38,17 +38,6 @@ python object_detection/export_inference_graph.py \
     --output_directory=${EXPORT_DIR}
 ```
 
-Inference
-```
-INPUT_TFRECORD=/Users/clementjoudet/Desktop/dev/tooth-detection/data/val_index.record
-OUTPUT_TFRECORD=/Users/clementjoudet/Desktop/dev/tooth-detection/models/index/cloud/inference/inference.record
-INFERENCE_GRAPH=/Users/clementjoudet/Desktop/dev/tooth-detection/models/index/cloud/inference/frozen_inference_graph.pb
-python object_detection/inference/infer_detections.py \
-  --input_tfrecord_paths=${INPUT_TFRECORD} \
-  --output_tfrecord_path=${OUTPUT_TFRECORD} \
-  --inference_graph=${INFERENCE_GRAPH}
-```
-
 Stream logs
 
 ```

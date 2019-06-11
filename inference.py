@@ -15,15 +15,19 @@ from object_detection.utils import visualization_utils as vis_util
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
 flags = tf.app.flags
-flags.DEFINE_string('PATH_TO_FROZEN_GRAPH', os.path.join(dir_path, 'models', 'index', 'cloud', 'inference', 'frozen_inference_graph.pb'), 'Path to frozen graph')
-flags.DEFINE_string('PATH_TO_LABELS', os.path.join(dir_path, 'data', 'pascal_label_map_index.pbtxt'), 'Path to label map')
-flags.DEFINE_string('PATH_TO_TEST_IMAGES_DIR', os.path.join(dir_path, 'data', 'iran_index', 'JPEGImages'), 'Path to image folder')
+flags.DEFINE_string('PATH_TO_FROZEN_GRAPH', os.path.join(dir_path, 'models', 'output_raw', 'inference', 'frozen_inference_graph.pb'), 'Path to frozen graph')
+flags.DEFINE_string('PATH_TO_LABELS', os.path.join(dir_path, 'data', 'golden_label_map.pbtxt'), 'Path to label map')
+flags.DEFINE_string('PATH_TO_TEST_IMAGES_DIR', os.path.join(dir_path, 'data', 'inference'), 'Path to image folder')
+flags.DEFINE_boolean('no_preprocess', False, '')
 FLAGS = flags.FLAGS
 
 def preprocess_image(img):
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(16,16))
     cl = clahe.apply(img)
     image = Image.fromarray(cl)
+    if flags.FLAGS.no_preprocess:
+        print('no preprocessing')
+        image = Image.fromarray(img)
     im = Image.new('RGB', image.size)
     im.paste(image)
     return im
