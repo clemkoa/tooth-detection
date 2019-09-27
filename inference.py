@@ -66,8 +66,10 @@ def run_inference_for_single_image(image, graph):
 
 if __name__ == "__main__":
     category_index = label_map_util.create_category_index_from_labelmap(FLAGS.PATH_TO_LABELS, use_display_name=True)
-    TEST_IMAGE_PATHS = glob.glob(os.path.join(FLAGS.PATH_TO_TEST_IMAGES_DIR, '*.png'))
-
+    TEST_IMAGE_PATHS = glob.glob(os.path.join(FLAGS.PATH_TO_TEST_IMAGES_DIR, '*gonesse*.png'))
+    OUTPUT_FOLDER = os.path.join('/'.join(FLAGS.PATH_TO_FROZEN_GRAPH.split('/')[:-2]), 'output')
+    if not os.path.exists(OUTPUT_FOLDER):
+        os.makedirs(OUTPUT_FOLDER)
     detection_graph = tf.Graph()
     with detection_graph.as_default():
       od_graph_def = tf.GraphDef()
@@ -91,4 +93,5 @@ if __name__ == "__main__":
             max_boxes_to_draw=50,
             line_thickness=4)
         im = Image.fromarray(image_np)
-        im.show()
+        print('Saving image to path', os.path.join(OUTPUT_FOLDER, image_path.split('/')[-1]))
+        im.save(os.path.join(OUTPUT_FOLDER, image_path.split('/')[-1]))
