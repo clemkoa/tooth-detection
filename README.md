@@ -7,7 +7,7 @@
 Dataset is private for the moment, but was made with a stomatologist surgeon, using VoTT for labeling. The export was made under the `Tensorflow Pascal VOC` format
 
 The project is divided into two tasks:
-1. Detect tooth restoration, endodotic treatment and implants (models/transfer)
+1. Detect tooth restoration, endodotic treatment and implants (models/treatment)
 2. Detect teeth and identify their ISO Dental Notation (models/index)
 
 
@@ -38,8 +38,8 @@ export PYTHONPATH=$PYTHONPATH:`pwd`:`pwd`/slim
 
 ```
 python <path_to_tensorflow>/models/research/object_detection/model_main.py \
-    --pipeline_config_path=<path_to_tooth-detection>/tooth-detection/models/transfer/faster_rcnn_resnet50_coco.config \
-    --model_dir=<path_to_tooth-detection>/tooth-detection/models/transfer/new_version \
+    --pipeline_config_path=<path_to_tooth-detection>/tooth-detection/models/treatment/faster_rcnn_resnet50_coco.config \
+    --model_dir=<path_to_tooth-detection>/tooth-detection/models/treatment/model \
     --num_train_steps=100000 \
     --alsologtostderr
 ```
