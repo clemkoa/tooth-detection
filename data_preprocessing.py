@@ -28,6 +28,12 @@ def preprocess_image(image_path, horizontal_flip=False):
     cl = clahe.apply(img)
     if horizontal_flip:
         cl = cv2.flip(cl, 1)
+        
+    #normalize image:
+    #img = cv2.normalize(img, None, alpha=0, beta=1, norm_type=cv2.NORM_TYPE_MASK , dtype=cv2.CV_32F)
+    meani, stdi = cv2.meanStdDev(img)
+    img = (img - meani)/(stdi);
+    
     # Image.fromarray(cl).show()
     return cv2.imencode('.jpeg', cl)[1].tostring()
 
