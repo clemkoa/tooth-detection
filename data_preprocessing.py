@@ -24,6 +24,10 @@ def create_directory_if_not_exists(directory):
 
 def preprocess_image(image_path, horizontal_flip=False):
     img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+    
+    //1st histogram equalization(Will this improve final ANN detection and identification accuracy?):
+    img = cv2.equalizeHist(img)
+    
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(16,16))
     cl = clahe.apply(img)
     if horizontal_flip:
