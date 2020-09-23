@@ -63,12 +63,8 @@ def dict_to_tf_example(data,
     width = int(data['size']['width'])
     height = int(data['size']['height'])
 
-    xmin = []
-    ymin = []
-    xmax = []
-    ymax = []
-    classes = []
-    classes_text = []
+    xmin = ymin = xmax = ymax = []
+    classes = classes_text = []
     if 'object' not in data.keys():
         print('No label detected in the xml format')
     else:
