@@ -20,7 +20,7 @@ depth = 32
 last_depth = 50
 num_hidden = 128
 dropout = 0.8
-num_steps = 20001
+num_steps = 40001
 
 def load_tooth(folder):
   """Load the data for a single letter label."""
@@ -79,10 +79,8 @@ def confusion_matrix(predictions, labels):
     return tf.contrib.metrics.confusion_matrix(np.argmax(predictions, 1), np.argmax(labels, 1))
 
 def merge_datasets(datasets):
-    train_d = []
-    train_l = []
-    test_d = []
-    test_l = []
+    train_d = train_l = test_d = test_l = []
+    
     for index, foldername in enumerate(datasets):
         dataset = pickle.load(open(foldername + 'train.pickle', "rb"))
         train_d.append(dataset)
