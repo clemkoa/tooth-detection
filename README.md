@@ -7,7 +7,7 @@
 Dataset is private for the moment, but was made with a stomatologist surgeon, using VoTT for labeling. The export was made under the `Tensorflow Pascal VOC` format
 
 The project is divided into two tasks:
-1. Detect tooth restoration, endodotic treatment and implants (models/treatment)
+1. Detect tooth restoration, endodontic treatment and implants (models/treatment)
 2. Detect teeth and identify their ISO Dental Notation (models/index)
 
 
