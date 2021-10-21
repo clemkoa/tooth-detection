@@ -4,7 +4,8 @@
 ![Image 2](public/images/2.png "Image 2")
 ![Image 3](public/images/3.png "Image 3")
 
-Dataset is private for the moment, but was made with a stomatologist surgeon, using VoTT for labeling. The export was made under the `Tensorflow Pascal VOC` format
+⚠️ Dataset is private for the moment. For privacy reasons it can't be shared. We are trying to get approval from hospitals and patients included in this dataset, but this a work in progress. For the same privacy reasons, the trained model can't be shared at the moment.
+The dataset was made with a stomatologist surgeon, using VoTT for labeling. The export was made under the `Tensorflow Pascal VOC` format
 
 The project is divided into two tasks:
 1. Detect tooth restoration, endodontic treatment and implants (models/treatment)
